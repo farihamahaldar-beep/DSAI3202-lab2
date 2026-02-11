@@ -28,18 +28,51 @@ Pipeline consists of three sequential notebooks: 01_load_and_clean_reviews, 02_e
 
 
 
-How do the notebooks map to the ETL process?
+1. How do the notebooks map to the ETL process?
 
-Extract (Notebook 1):
-- We extract/pull the review data from the processed container where it was stored in Lab 2
+   Extract (Notebook 1):
+   - We extract/pull the review data from the processed container where it was stored in Lab 2
+   
+   Transform (Notebooks 1 & 2):
+   - Notebook 1: We clean the data by removing bad reviews (missing info, invalid ratings, reviews that are too short)
+   - Notebook 2: We add more information by joining the reviews with product details like brand, title, and price
+   - Basically we're fixing and improving the data to make it useful
+   
+   Load (Notebook 3):
+   - We save the final clean and enriched data to the curated container
+   - This is our finished product that's ready to use for analysis or machine learning
+   
+   So it's: grabing the data → clean it up and add stuff → save the final version
 
-Transform (Notebooks 1 & 2):
-- Notebook 1: We clean the data by removing bad reviews (missing info, invalid ratings, reviews that are too short)
-- Notebook 2: We add more information by joining the reviews with product details like brand, title, and price
-- Basically we're fixing and improving the data to make it useful
+2. What other enrichment can you do to the current Gold layer?
+   - Price and Category Features:
+      - Price brackets: "budget" (under $50), "mid-range" ($50-200), "premium" (over $200)
+      - Rating categories: "poor" (1-2 stars), "average" (3 stars), "good" (4-5 stars)
+   - Reviewer Behavior Features:
+      - Number of reviews each person has written (are they active reviewers or one-time users?)
+      - Review consistency (do they always give same ratings or vary?)
+   - Text Analysis Features:
+      - Word count and character count of review text
+      - Emotion analysis (positive/negative/neutral emotion detection)
 
-Load (Notebook 3):
-- We save the final clean and enriched data to the curated container
-- This is our finished product that's ready to use for analysis or machine learning
+4. VISUALIZATIONS
+      1. Rating distribution
+         A bar chart showing how many reviews have each star rating (1-5)
+         <img width="746" height="449" alt="image" src="https://github.com/user-attachments/assets/fe5b08a6-b5c1-489c-b003-b97f123a74cb" />
+         - Almost 60% of all reviews are 5-star ratings.
+         - The data shows a strong bias toward extreme ratings - many 5-stars (positive) and relatively fewer middle ratings.
+         - Only 6.5% of reviews are 1-star indicating most customers are satisfied.
+           This indicates that amazon products generally satisfy customers. The low percentage of 1-2 star reviews (10.4% combined) suggests decent product quality overall.
 
-So it's: grabing the data → clean it up and add stuff → save the final version
+      3. Review Length vs Rating
+         Box plots showing how long reviews are for each star rating.
+         <img width="743" height="445" alt="image" src="https://github.com/user-attachments/assets/460cf8db-1e83-4da9-be35-01a824351684" />
+         - The middle line in each box is around the same height i.e., all ratings have similar median lengths.
+         - The 1-star box appears slightly taller, suggesting unhappy customers write reviews of varying lengths.
+         - Happy customers review range from brief "Great product!" to detailed explanations.
+           This indicates People who feel strongly (1-star or 5-star) sometimes write very long, detailed reviews. Those extremely long reviews (the dots way up high) are people who really wanted to share                 their experience in detail.
+
+
+   
+   
+   
