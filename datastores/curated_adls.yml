@@ -1,0 +1,7 @@
+$schema: https://azuremlschemas.azureedge.net/latest/datastore.schema.json
+name: blobkey
+type: azure_blob
+account_name: datalake60306249
+container_name: curated
+credentials:
+  account_key: 7G2tmMYVeA+Zamq6y+efmYamIo1OeBnKxzRUeVMqN91qn7bANbEEq0szMvcTHBFgIayEs7X0RgNo+ASt1ApzIg==
