@@ -1,0 +1,42 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+name: merge_features
+display_name: Merge All Features
+description: Merges outputs from all feature engineering components (review length, sentiment, TF-IDF, semantic embeddings) into a single feature-enriched dataset. Joins on entity keys (asin, reviewerID) and outputs as Parquet.
+type: command
+version: 1
+
+inputs:
+  review_length_data:
+    type: uri_folder
+    description: Output folder from review length features component
+  sentiment_data:
+    type: uri_folder
+    description: Output folder from sentiment features component
+  tfidf_data:
+    type: uri_folder
+    description: Output folder from TF-IDF features component
+  semantic_embedding_data:
+    type: uri_folder
+    description: Output folder from semantic embedding features component
+  entity_keys:
+    type: string
+    description: Entity keys to join on (comma-separated, e.g., "asin,reviewerID")
+    default: "asin,reviewerID"
+
+outputs:
+  output_data:
+    type: uri_folder
+    description: Output folder containing merged feature dataset (Parquet)
+
+command: >-
+  python merge_features.py
+  --review_length_data ${{inputs.review_length_data}}
+  --sentiment_data ${{inputs.sentiment_data}}
+  --tfidf_data ${{inputs.tfidf_data}}
+  --semantic_embedding_data ${{inputs.semantic_embedding_data}}
+  --output_data ${{outputs.output_data}}
+  --entity_keys ${{inputs.entity_keys}}
+
+code: .
+
+environment: azureml:AzureML-sklearn-1.1-ubuntu20.04-py38-cpu@latest
