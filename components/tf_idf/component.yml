@@ -1,0 +1,46 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+name: tfidf_features
+display_name: TF-IDF Feature Extraction
+description: Extracts TF-IDF features from review text using scikit-learn's TfidfVectorizer. Supports n-grams and vocabulary limiting.
+type: command
+inputs:
+  input_data:
+    type: uri_folder
+    description: Input data folder containing CSV files
+  text_column:
+    type: string
+    description: Name of the text column in the input data
+    default: "review_text"
+  max_features:
+    type: integer
+    description: Maximum number of features (vocabulary size)
+    default: 100
+  ngram_range:
+    type: string
+    description: N-gram range as "min,max" (e.g., "1,2" for unigrams and bigrams)
+    default: "1,2"
+  is_train:
+    type: string
+    description: Whether this is training data (true/false) - if true, vectorizer will be fitted
+    default: "true"
+  vectorizer_path:
+    type: string
+    description: Path to pre-fitted vectorizer pickle file (required if is_train=false)
+    default: ""
+outputs:
+  output_data:
+    type: uri_folder
+    description: Output folder containing data with TF-IDF features and vectorizer
+environment:
+  conda_file: ./conda.yml
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04
+command: >-
+  python tfidf.py
+  --input_data ${{inputs.input_data}}
+  --output_data ${{outputs.output_data}}
+  --text_column ${{inputs.text_column}}
+  --max_features ${{inputs.max_features}}
+  --ngram_range ${{inputs.ngram_range}}
+  --is_train ${{inputs.is_train}}
+  --vectorizer_path ${{inputs.vectorizer_path}}
+code: .
