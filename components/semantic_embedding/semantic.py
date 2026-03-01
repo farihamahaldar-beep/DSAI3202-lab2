@@ -1,27 +1,30 @@
 import argparse
-import pandas as pd
 import os
+import pandas as pd
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--input_data", type=str, required=True)
+    parser.add_argument("--output_data", type=str, required=True)
+    parser.add_argument("--text_column", type=str, default="reviewText")
+    parser.add_argument("--model_name", type=str, default="sentence-transformers/distilbert-base-uncased-mean-tokens")
+    return parser.parse_args()
+
 def main():
-    parser = argparse.ArgumentParser(description="Semantic Embedding Feature Extraction Component")
-    parser.add_argument("--input_data", type=str, required=True, help="Path to input data")
-    parser.add_argument("--output_data", type=str, required=True, help="Path to output data")
-    parser.add_argument("--text_column", type=str, default="review_text", help="Name of text column")
-    parser.add_argument("--model_name", type=str, default="sentence-transformers/distilbert-base-uncased-mean-tokens", 
-                        help="Hugging Face model name for embeddings")
+    args = parse_args()
     
-    args = parser.parse_args()
+    # Load data from parquet
+    df = pd.read_parquet(args.input_data)
     
-    # Load data
-    df = pd.read_csv(args.input_data)
+    # Ensure text column exists
+    if args.text_column not in df.columns:
+        print(f"Warning: Column {args.text_column} not found!")
+        return
     
-    # Handle NaN values in text column
-    df[args.text_column] = df[args.text_column].fillna("")
-    
-    # Create output directory if it doesn't exist
-    os.makedirs(args.output_data, exist_ok=True)
+    # Fill empty reviews
+    df[args.text_column] = df[args.text_column].fillna('')
     
     # Load pre-trained model
     print(f"Loading model: {args.model_name}")
@@ -40,18 +43,15 @@ def main():
         columns=[f"bert_embedding_{i}" for i in range(embedding_dim)]
     )
     
-    # Combine with original data
-    result_df = pd.concat([df.reset_index(drop=True), embedding_df.reset_index(drop=True)], axis=1)
+    # Add embeddings to original dataframe
+    df = pd.concat([df.reset_index(drop=True), embedding_df.reset_index(drop=True)], axis=1)
     
-    # Save output
-    output_path = os.path.join(args.output_data, "data.csv")
-    result_df.to_csv(output_path, index=False)
+    # Save the output
+    os.makedirs(args.output_data, exist_ok=True)
+    df.to_parquet(os.path.join(args.output_data, "data.parquet"), index=False)
     
     print(f"Semantic embeddings extracted successfully!")
-    print(f"Output saved to {output_path}")
     print(f"Embedding dimension: {embedding_dim}")
-    print(f"Total features added: {embedding_dim}")
-    print(f"Embeddings shape: {embeddings.shape}")
 
 if __name__ == "__main__":
     main()
