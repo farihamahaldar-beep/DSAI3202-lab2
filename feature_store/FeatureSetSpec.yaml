@@ -1,0 +1,50 @@
+$schema: https://azuremlschemas.azureedge.net/latest/featuresetspec.schema.json
+
+source:
+  type: parquet
+  path: https://amazonlab260300152566028.blob.core.windows.net/azureml-blobstore-ce895e8b-6216-4417-abb9-bd9f29859019/azureml/eaf54409-b59a-45d8-9e0e-0b58e8ce0795/output_data/
+  timestamp_column:
+    name: reviewTime
+
+index_columns:
+  - name: asin
+    type: string
+  - name: reviewerID
+    type: string
+
+features:
+  # --- Original Columns ---
+  - name: title
+    type: string
+  - name: brand
+    type: string
+  - name: price
+    type: double
+  - name: overall
+    type: double
+  - name: summary
+    type: string
+  - name: reviewText
+    type: string
+  - name: helpful
+    type: string
+  - name: reviewTime
+    type: string
+  - name: review_year
+    type: integer
+
+  # --- Review Length Features ---
+  - name: review_length_words
+    type: integer
+  - name: review_length_chars
+    type: integer
+
+  # --- Sentiment Features ---
+  - name: sentiment_pos
+    type: double
+  - name: sentiment_neg
+    type: double
+  - name: sentiment_neu
+    type: double
+  - name: sentiment_compound
+    type: double

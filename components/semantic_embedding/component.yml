@@ -1,0 +1,30 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+name: semantic_embedding_features
+display_name: Semantic Embedding Feature Extraction
+type: command
+
+inputs:
+  input_data:
+    type: uri_folder
+  text_column:
+    type: string
+    default: reviewText
+  model_name:
+    type: string
+    default: sentence-transformers/all-MiniLM-L6-v2
+
+outputs:
+  output_data:
+    type: uri_folder
+
+code: .
+command: >-
+  python semantic.py
+  --input_data ${{inputs.input_data}}
+  --output_data ${{outputs.output_data}}
+  --text_column ${{inputs.text_column}}
+  --model_name ${{inputs.model_name}}
+
+environment:
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04
+  conda_file: conda.yml

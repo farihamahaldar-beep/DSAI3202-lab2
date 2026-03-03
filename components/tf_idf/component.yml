@@ -1,0 +1,40 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+name: tfidf_features
+display_name: TF-IDF Feature Extraction
+description: Extracts TF-IDF features from review text using scikit-learn's TfidfVectorizer.
+type: command
+inputs:
+  input_data:
+    type: uri_folder
+    description: Input data folder containing CSV files
+  text_column:
+    type: string
+    description: Name of the text column in the input data
+    default: "reviewText"
+  max_features:
+    type: integer
+    description: Maximum number of features (vocabulary size)
+    default: 100
+  ngram_range:
+    type: string
+    description: N-gram range as "min,max" (e.g., "1,2")
+    default: "1,2"
+outputs:
+  output_data:
+    type: uri_folder
+    description: Output folder containing data with TF-IDF features
+  vectorizer:
+    type: uri_folder
+    description: Output folder containing the fitted vectorizer
+environment:
+  conda_file: ./conda.yml
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04
+command: >-
+  python tf_idf.py
+  --input_data ${{inputs.input_data}}
+  --output_data ${{outputs.output_data}}
+  --vectorizer_output ${{outputs.vectorizer}}
+  --text_column ${{inputs.text_column}}
+  --max_features ${{inputs.max_features}}
+  --ngram_range ${{inputs.ngram_range}}
+code: .

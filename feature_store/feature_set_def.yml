@@ -1,0 +1,8 @@
+$schema: https://azuremlschemas.azureedge.net/latest/featureset.schema.json
+name: feature_set_def
+version: "1"
+description: Feature set containing engineered text features from Amazon Electronics reviews including review length, sentiment analysis, TF-IDF word importance, and semantic embeddings
+entities:
+  - azureml:AmazonReview:1
+specification:
+  path: .

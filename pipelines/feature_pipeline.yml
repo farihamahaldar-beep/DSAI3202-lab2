@@ -1,0 +1,70 @@
+$schema: https://azuremlschemas.azureedge.net/latest/pipelineJob.schema.json
+type: pipeline
+
+compute: azureml:lab4-cluster
+
+inputs:
+  sampled_data:
+    type: uri_folder
+    path: azureml:amazon_electronics_features_v1_sampled@latest
+
+jobs:
+  split:
+    type: command
+    component: azureml:split_dataset@latest
+    inputs:
+      data: ${{parent.inputs.sampled_data}}
+
+  normalize_train:
+    type: command
+    component: azureml:normalize_text@latest
+    inputs:
+      data: ${{parent.jobs.split.outputs.train}}
+
+  normalize_val:
+    type: command
+    component: azureml:normalize_text@latest
+    inputs:
+      data: ${{parent.jobs.split.outputs.val}}
+
+  normalize_test:
+    type: command
+    component: azureml:normalize_text@latest
+    inputs:
+      data: ${{parent.jobs.split.outputs.test}}
+
+  length_train:
+    type: command
+    component: azureml:review_length_features@latest
+    inputs:
+      input_data: ${{parent.jobs.normalize_train.outputs.out}}
+
+  sentiment_train:
+    type: command
+    component: azureml:sentiment_features@latest
+    inputs:
+      input_data: ${{parent.jobs.normalize_train.outputs.out}}
+
+  tfidf:
+    type: command
+    component: azureml:tfidf_features@latest
+    inputs:
+      input_data: ${{parent.jobs.normalize_train.outputs.out}}
+      text_column: "reviewText"
+      max_features: 100
+      ngram_range: "1,2"
+
+  sbert_train:
+    type: command
+    component: azureml:semantic_embedding_features@latest
+    inputs:
+      input_data: ${{parent.jobs.normalize_train.outputs.out}}
+
+  merge_all:
+    type: command
+    component: azureml:merge_features@latest
+    inputs:
+      review_length_data: ${{parent.jobs.length_train.outputs.output_data}}
+      sentiment_data: ${{parent.jobs.sentiment_train.outputs.output_data}}
+      tfidf_data: ${{parent.jobs.tfidf.outputs.output_data}}
+      semantic_embedding_data: ${{parent.jobs.sbert_train.outputs.output_data}}

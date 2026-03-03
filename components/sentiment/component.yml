@@ -1,0 +1,26 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+name: sentiment_features
+display_name: Sentiment Feature Extraction
+description: Extracts sentiment-based features from review text using VADER SentimentIntensityAnalyzer
+type: command
+inputs:
+  input_data:
+    type: uri_folder
+    description: Input data folder containing CSV files
+  text_column:
+    type: string
+    description: Name of the text column in the input data
+    default: "reviewText"
+outputs:
+  output_data:
+    type: uri_folder
+    description: Output folder containing data with sentiment features
+environment:
+  conda_file: ./conda.yml
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04
+command: >-
+  python sentiment.py
+  --input_data ${{inputs.input_data}}
+  --output_data ${{outputs.output_data}}
+  --text_column ${{inputs.text_column}}
+code: .
