@@ -248,6 +248,24 @@ After the pipeline completes successfully:
 
 ---
 
+### Pipeline Execution & Results
+
+### Pipeline Completion
+<img width="1097" height="90" alt="image" src="https://github.com/user-attachments/assets/f8cc2a50-2b5a-45cc-88ae-9a446b645768" />
+
+<img width="959" height="459" alt="image" src="https://github.com/user-attachments/assets/9b4e9ab1-cb3f-403b-ad27-2f18bd857ccd" />
+
+The pipeline completed successfully in ~5mins
+
+### Merge All Output
+<img width="1120" height="444" alt="image" src="https://github.com/user-attachments/assets/3c34ef27-2688-4ceb-9659-03a017223ecb" />
+Final output: 403,409 rows × 528 columns containing all engineered features ready for Feature Store registration.
+
+### Feature Store Registration
+<img width="1365" height="489" alt="image" src="https://github.com/user-attachments/assets/4e4da85e-4efc-4aee-8a36-4240050beb47" />
+<img width="1089" height="542" alt="image" src="https://github.com/user-attachments/assets/f8e305e0-c41e-4053-b056-ad53ed7c8dfd" />
+
+
 ## Summary
 528 engineered features are now registered, versioned, and ready for reuse in future modeling tasks. The Feature Store enables consistent feature delivery across training, validation, and production environments.
 
