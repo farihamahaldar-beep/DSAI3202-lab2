@@ -3,7 +3,7 @@ name: merge_features
 display_name: Merge All Features
 description: Merges outputs from all feature engineering components (review length, sentiment, TF-IDF, semantic embeddings) into a single feature-enriched dataset. Joins on entity keys (asin, reviewerID) and outputs as Parquet.
 type: command
-version: 1
+version: 2
 
 inputs:
   review_length_data:
@@ -29,7 +29,7 @@ outputs:
     description: Output folder containing merged feature dataset (Parquet)
 
 command: >-
-  python merge_features.py
+  python merge.py
   --review_length_data ${{inputs.review_length_data}}
   --sentiment_data ${{inputs.sentiment_data}}
   --tfidf_data ${{inputs.tfidf_data}}

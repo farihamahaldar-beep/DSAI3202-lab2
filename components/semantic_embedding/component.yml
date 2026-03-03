@@ -1,31 +1,30 @@
 $schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
 name: semantic_embedding_features
 display_name: Semantic Embedding Feature Extraction
-description: Extracts dense semantic embeddings from review text using transformer-based models (DistilBERT). These contextual vectors capture meaning beyond surface words.
 type: command
+
 inputs:
   input_data:
     type: uri_folder
-    description: Input data folder containing CSV files
   text_column:
     type: string
-    description: Name of the text column in the input data
-    default: "review_text"
+    default: reviewText
   model_name:
     type: string
-    description: Hugging Face model name for embeddings (e.g., sentence-transformers/distilbert-base-uncased-mean-tokens)
-    default: "sentence-transformers/distilbert-base-uncased-mean-tokens"
+    default: sentence-transformers/all-MiniLM-L6-v2
+
 outputs:
   output_data:
     type: uri_folder
-    description: Output folder containing data with semantic embedding features
-environment:
-  conda_file: ./conda.yml
-  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04
+
+code: .
 command: >-
-  python semantic_embedding.py
+  python semantic.py
   --input_data ${{inputs.input_data}}
   --output_data ${{outputs.output_data}}
   --text_column ${{inputs.text_column}}
   --model_name ${{inputs.model_name}}
-code: .
+
+environment:
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04
+  conda_file: conda.yml

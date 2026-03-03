@@ -2,7 +2,7 @@ $schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.jso
 name: review_length_features
 display_name: Review Length Feature Component
 type: command
-version: 1
+version: 2
 
 inputs:
   input_data:

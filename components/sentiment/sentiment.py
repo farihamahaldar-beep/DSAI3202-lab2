@@ -5,7 +5,10 @@ from nltk.sentiment import SentimentIntensityAnalyzer
 import nltk
 
 # Download required VADER lexicon
-nltk.download('vader_lexicon', quiet=True)
+try:
+    nltk.data.find('sentiment/vader_lexicon.zip')
+except LookupError:
+    nltk.download('vader_lexicon')
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -18,8 +21,8 @@ def main():
     args = parse_args()
     
     # Load data from parquet
-    df = pd.read_parquet(args.input_data)
-    
+    input_path = os.path.join(args.input_data, "data.parquet")
+    df = pd.read_parquet(input_path)
     # Ensure text column exists
     if args.text_column in df.columns:
         # Fill empty reviews

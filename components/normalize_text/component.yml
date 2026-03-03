@@ -15,7 +15,7 @@ outputs:
 code: .
 command: >
   python normalize.py
-  --data ${{inputs.data}}
-  --out ${{outputs.out}}
-  
+  --input_data ${{inputs.data}}
+  --output_data ${{outputs.out}}
+
 environment: azureml:AzureML-sklearn-1.1-ubuntu20.04-py38-cpu@latest

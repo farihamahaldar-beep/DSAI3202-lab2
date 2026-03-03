@@ -10,7 +10,7 @@ inputs:
   text_column:
     type: string
     description: Name of the text column in the input data
-    default: "review_text"
+    default: "reviewText"
 outputs:
   output_data:
     type: uri_folder
