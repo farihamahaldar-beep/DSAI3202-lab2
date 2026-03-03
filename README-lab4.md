@@ -19,7 +19,7 @@ This lab implements a complete feature engineering pipeline using Azure Machine 
 </details>
 
 <details>
-<summary><b>📊 Review Length Distribution</b></summary>
+<summary><b>Review Length Distribution</b></summary>
 <img width="660" height="427" alt="image" src="https://github.com/user-attachments/assets/e9eb62eb-b08d-441e-bb04-e4f5a198de9c" />
 <img width="672" height="337" alt="image" src="https://github.com/user-attachments/assets/6bef034c-c262-4c65-8f75-e9eeb50ea6d3" />
 
@@ -249,10 +249,7 @@ After the pipeline completes successfully:
 ---
 
 ## Summary
-
-Your 528 engineered features are now registered, versioned, and ready for reuse in future modeling tasks. The Feature Store enables consistent feature delivery across training, validation, and production environments.
-
-## ## Reflection
+528 engineered features are now registered, versioned, and ready for reuse in future modeling tasks. The Feature Store enables consistent feature delivery across training, validation, and production environments.
 
 ## Reflection
 
