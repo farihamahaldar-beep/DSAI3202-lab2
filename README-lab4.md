@@ -16,6 +16,15 @@ This lab implements a complete feature engineering pipeline using Azure Machine 
 
 **Review Length Distribution:** Most reviews ~500 characters, but long tail extends to 30,000+. Length alone doesn't predict ratings, but combined with sentiment it's useful.
 
+</details>
+
+<details>
+<summary><b>📊 Review Length Distribution</b></summary>
+<img width="660" height="427" alt="image" src="https://github.com/user-attachments/assets/e9eb62eb-b08d-441e-bb04-e4f5a198de9c" />
+<img width="672" height="337" alt="image" src="https://github.com/user-attachments/assets/6bef034c-c262-4c65-8f75-e9eeb50ea6d3" />
+
+</details>
+
 ### Drift-Resistant Sampling
 
 **Problem:** Random sampling from 20M reviews over-represents recent years, causing language drift when features fail on older data.
@@ -35,7 +44,7 @@ df_sampled = df_with_year.stat.sampleBy('review_year', fractions={...})
 Each component performs one specific task, runs on Azure ML compute, and outputs parquet files that feed into the pipeline.
 
 <details>
-<summary><b>📁 File Structure</b></summary>
+<summary><b>File Structure</b></summary>
 ```
 components/
 ├── split_dataset/
