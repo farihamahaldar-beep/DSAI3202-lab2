@@ -16,6 +16,7 @@ This lab implements a complete feature engineering pipeline using Azure Machine 
 
 **Review Length Distribution:** Most reviews ~500 characters, but long tail extends to 30,000+. Length alone doesn't predict ratings, but combined with sentiment it's useful.
 
+(REFER [03_write_gold_features_v1.ipynb](03_write_gold_features_v1.ipynb))
 </details>
 
 <details>
@@ -264,7 +265,7 @@ Final output: 403,409 rows × 528 columns containing all engineered features rea
 ### Feature Store Registration
 <img width="1365" height="489" alt="image" src="https://github.com/user-attachments/assets/4e4da85e-4efc-4aee-8a36-4240050beb47" />
 <img width="1089" height="542" alt="image" src="https://github.com/user-attachments/assets/f8e305e0-c41e-4053-b056-ad53ed7c8dfd" />
-
+All 528 features registered as version 1 in the AmazonReview entity, ready for downstream modeling tasks.
 
 ## Summary
 528 engineered features are now registered, versioned, and ready for reuse in future modeling tasks. The Feature Store enables consistent feature delivery across training, validation, and production environments.
