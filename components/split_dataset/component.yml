@@ -1,0 +1,46 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+name: split_turbofan
+display_name: Split Dataset into Train/Validation/Test
+description: Split GA-selected features into training (80%), validation (20%), and test sets
+type: command
+version: 1
+
+inputs:
+  train_features:
+    type: uri_folder
+    description: GA-selected training features folder
+  train_target:
+    type: uri_folder
+    description: Training targets folder
+  test_features:
+    type: uri_folder
+    description: GA-selected test features folder
+  test_target:
+    type: uri_folder
+    description: Test targets folder
+  train_ratio:
+    type: number
+    description: Training ratio (0.0 to 1.0)
+    default: 0.8
+  seed:
+    type: integer
+    description: Random seed
+    default: 42
+
+outputs:
+  output_dir:
+    type: uri_folder
+    description: Output folder with train/val/test splits
+
+command: >-
+  python split_data.py
+  --train_features ${{inputs.train_features}}
+  --train_target ${{inputs.train_target}}
+  --test_features ${{inputs.test_features}}
+  --test_target ${{inputs.test_target}}
+  --output_dir ${{outputs.output_dir}}
+  --train_ratio ${{inputs.train_ratio}}
+  --seed ${{inputs.seed}}
+
+code: .
+environment: azureml:AzureML-sklearn-1.1-ubuntu20.04-py38-cpu@latest

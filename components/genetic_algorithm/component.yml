@@ -1,0 +1,38 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+name: genetic_algorithm
+display_name: Genetic Algorithm Feature Selection
+description: Use DEAP genetic algorithm to evolve optimal feature subset with binary chromosome representation
+type: command
+version: 1
+
+inputs:
+  train_features:
+    type: uri_folder
+    description: Filtered training features folder
+  train_target:
+    type: uri_folder
+    description: Training targets folder
+  pop_size:
+    type: integer
+    description: Population size
+    default: 20
+  n_gen:
+    type: integer
+    description: Number of generations
+    default: 15
+
+outputs:
+  output_dir:
+    type: uri_folder
+    description: Output folder with GA-selected features and metrics
+
+command: >-
+  python optimize_features.py
+  --train_features ${{inputs.train_features}}
+  --train_target ${{inputs.train_target}}
+  --output_dir ${{outputs.output_dir}}
+  --pop_size ${{inputs.pop_size}}
+  --n_gen ${{inputs.n_gen}}
+
+code: .
+environment: azureml:AzureML-sklearn-1.1-ubuntu20.04-py38-cpu@latest

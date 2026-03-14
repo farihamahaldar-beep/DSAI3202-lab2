@@ -1,0 +1,54 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+name: train_evaluate_turbofan
+display_name: Train and Evaluate RUL Model
+description: Train RandomForest model on GA-selected features and evaluate on train/validation/test sets
+type: command
+version: 1
+
+inputs:
+  train_features:
+    type: uri_folder
+    description: Training features folder
+  train_target:
+    type: uri_folder
+    description: Training targets folder
+  val_features:
+    type: uri_folder
+    description: Validation features folder
+  val_target:
+    type: uri_folder
+    description: Validation targets folder
+  test_features:
+    type: uri_folder
+    description: Test features folder
+  test_target:
+    type: uri_folder
+    description: Test targets folder
+  n_estimators:
+    type: integer
+    description: Number of trees in Random Forest
+    default: 100
+  random_state:
+    type: integer
+    description: Random state for reproducibility
+    default: 42
+
+outputs:
+  output_dir:
+    type: uri_folder
+    description: Output folder with model, predictions, and metrics
+
+command: >-
+  python train_model.py
+  --train_features ${{inputs.train_features}}
+  --train_target ${{inputs.train_target}}
+  --val_features ${{inputs.val_features}}
+  --val_target ${{inputs.val_target}}
+  --test_features ${{inputs.test_features}}
+  --test_target ${{inputs.test_target}}
+  --output_dir ${{outputs.output_dir}}
+  --n_estimators ${{inputs.n_estimators}}
+  --random_state ${{inputs.random_state}}
+
+code: .
+environment: azureml:AzureML-sklearn-1.1-ubuntu20.04-py38-cpu@latest

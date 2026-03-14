@@ -1,0 +1,11 @@
+name: split-dataset-env
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pandas
+  - numpy
+  - scikit-learn
+  - pip
+  - pip:
+    - azureml-mlflow

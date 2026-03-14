@@ -1,0 +1,12 @@
+name: genetic-algorithm-env
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pandas
+  - numpy
+  - scikit-learn
+  - pip
+  - pip:
+    - deap
+    - azureml-mlflow

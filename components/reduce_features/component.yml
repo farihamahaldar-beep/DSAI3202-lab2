@@ -1,0 +1,32 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+name: reduce_features
+display_name: Filter-Based Feature Selection
+description: Apply variance, correlation, and mutual information filters to reduce feature dimensionality
+type: command
+version: 1
+
+inputs:
+  train_features:
+    type: uri_folder
+    description: Extracted training features folder
+  train_target:
+    type: uri_folder
+    description: Training targets folder
+  test_features:
+    type: uri_folder
+    description: Extracted test features folder
+
+outputs:
+  output_dir:
+    type: uri_folder
+    description: Output folder containing filtered features
+
+command: >-
+  python reduce_features.py
+  --train_features ${{inputs.train_features}}
+  --train_target ${{inputs.train_target}}
+  --test_features ${{inputs.test_features}}
+  --output_dir ${{outputs.output_dir}}
+
+code: .
+environment: azureml:AzureML-sklearn-1.1-ubuntu20.04-py38-cpu@latest
