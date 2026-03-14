@@ -1,0 +1,65 @@
+$schema: https://azuremlschemas.azureedge.net/latest/pipeline.schema.json
+type: pipeline
+display_name: Turbofan RUL Feature Engineering Pipeline
+description: End-to-end pipeline for predictive maintenance - feature extraction, selection, and model training
+
+inputs:
+  train_data_path:
+    type: string
+    default: azureml://datastores/blobkey/paths/processed/turbofan_train_FD001/
+  test_data_path:
+    type: string
+    default: azureml://datastores/blobkey/paths/processed/turbofan_test_FD001/
+
+jobs:
+  extract_job:
+    type: command
+    component: azureml:extract_features:1
+    inputs:
+      train_data: ${{parent.inputs.train_data_path}}
+      test_data: ${{parent.inputs.test_data_path}}
+
+  filter_job:
+    type: command
+    component: azureml:feature_screening:1
+    inputs:
+      train_features: ${{parent.jobs.extract_job.outputs.train_features}}
+      train_target: ${{parent.jobs.extract_job.outputs.train_target}}
+      test_features: ${{parent.jobs.extract_job.outputs.test_features}}
+    depends_on: extract_job
+
+  ga_job:
+    type: command
+    component: azureml:genetic_algorithm:1
+    inputs:
+      train_features: ${{parent.jobs.filter_job.outputs.output_dir}}
+      train_target: ${{parent.jobs.extract_job.outputs.train_target}}
+      pop_size: 20
+      n_gen: 15
+    depends_on: filter_job
+
+  split_job:
+    type: command
+    component: azureml:split_turbofan:1
+    inputs:
+      train_features: ${{parent.jobs.ga_job.outputs.output_dir}}
+      train_target: ${{parent.jobs.extract_job.outputs.train_target}}
+      test_features: ${{parent.jobs.ga_job.outputs.output_dir}}
+      test_target: ${{parent.jobs.extract_job.outputs.test_target}}
+      train_ratio: 0.8
+      seed: 42
+    depends_on: ga_job
+
+  train_job:
+    type: command
+    component: azureml:train_evaluate_turbofan:1
+    inputs:
+      train_features: ${{parent.jobs.split_job.outputs.output_dir}}
+      train_target: ${{parent.jobs.split_job.outputs.output_dir}}
+      val_features: ${{parent.jobs.split_job.outputs.output_dir}}
+      val_target: ${{parent.jobs.split_job.outputs.output_dir}}
+      test_features: ${{parent.jobs.split_job.outputs.output_dir}}
+      test_target: ${{parent.jobs.split_job.outputs.output_dir}}
+      n_estimators: 100
+      random_state: 42
+    depends_on: split_job
