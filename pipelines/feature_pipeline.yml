@@ -70,7 +70,7 @@ jobs:
   # ── Step 1: Extract tsfresh features ───────────────────────────────────────
   extract_features_step:
     type: command
-    component: ../components/extract_features/component.yml
+    component: azureml:extract_features:3.0
     inputs:
       input_train:    ${{parent.inputs.raw_train_features}}
       input_test:     ${{parent.inputs.raw_test_features}}
@@ -162,7 +162,7 @@ jobs:
   # ── Step 5: Train RandomForest and evaluate ─────────────────────────────────
   train_evaluate_step:
     type: command
-    component: ../components/train_evaluate/component.yml
+    component: azureml:train_evaluate:11
     inputs:
       input_train:          ${{parent.jobs.split_dataset_step.outputs.output_train}}
       input_val:            ${{parent.jobs.split_dataset_step.outputs.output_val}}

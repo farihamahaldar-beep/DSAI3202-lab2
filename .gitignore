@@ -1,0 +1,28 @@
+# Azure credentials
+.env
+*.key
+config.yaml
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+env/
+
+# Data files
+*.parquet
+*.csv
+*.txt
+data/
+
+# Model outputs
+*.joblib
+*.pkl
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db

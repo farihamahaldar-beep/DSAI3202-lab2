@@ -5,7 +5,7 @@ description: >
   Trains a RandomForestRegressor on the GA-selected, split training data
   and evaluates on the validation set. Reports RMSE, MAE, R², NASA scoring
   function, OOB score, feature importances, and prediction CSV.
-version: "1.0"
+version: "11"
 type: command
 
 inputs:

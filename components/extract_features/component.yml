@@ -5,7 +5,7 @@ description: >
   Extracts time-series features from turbofan engine sensor data using
   tsfresh EfficientFCParameters with a rolling-window strategy.
   Produces per-engine-per-cycle feature vectors aligned with RUL labels.
-version: "2.0"
+version: "3.0"
 type: command
 
 inputs:
