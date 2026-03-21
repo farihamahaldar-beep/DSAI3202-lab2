@@ -1,3 +1,4 @@
+# Lab 2: Data Ingestion Pipeline on Azure
 1. Start by setting up the data lake (create storage acc, organize raw, processed and curated)
    <img width="997" height="259" alt="image" src="https://github.com/user-attachments/assets/c0549dde-6a63-4fa9-ac93-0317d1c94eca" />
 
