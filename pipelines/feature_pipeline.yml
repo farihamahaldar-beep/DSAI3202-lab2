@@ -1,65 +1,179 @@
-$schema: https://azuremlschemas.azureedge.net/latest/pipeline.schema.json
+$schema: https://azuremlschemas.azureedge.net/latest/pipelineJob.schema.json
 type: pipeline
-display_name: Turbofan RUL Feature Engineering Pipeline
-description: End-to-end pipeline for predictive maintenance - feature extraction, selection, and model training
 
+display_name: Turbofan RUL Feature Pipeline — Lab 5
+description: >
+  End-to-end pipeline for turbofan engine Remaining Useful Life prediction.
+  Steps: tsfresh feature extraction → filter-based reduction →
+  DEAP genetic algorithm selection → train/val split → RandomForest training.
+experiment_name: lab5_turbofan_rul
+
+# ── Global pipeline inputs ──────────────────────────────────────────────────
 inputs:
-  train_data_path:
-    type: string
-    default: azureml://datastores/blobkey/paths/processed/turbofan_train_FD001/
-  test_data_path:
-    type: string
-    default: azureml://datastores/blobkey/paths/processed/turbofan_test_FD001/
+  # Azure Data Lake paths produced by Databricks notebooks 05 & 06
+  raw_train_features:
+    type: uri_folder
+    path: azureml://datastores/blobkey/paths/FD001/train_tsfresh_ready
+  raw_test_features:
+    type: uri_folder
+    path: azureml://datastores/blobkey/paths/FD001/test_tsfresh_ready
+  raw_train_labels:
+    type: uri_folder
+    path: azureml://datastores/blobkey/paths/FD001/train_rul_labels
 
+  # Feature extraction
+  n_jobs:          8
+  window_size:     30
+
+  # Filter reduction
+  variance_threshold:    0.01
+  correlation_threshold: 0.95
+  mi_top_k:              100
+
+  # Genetic algorithm
+  population_size:  50
+  n_generations:    30
+  cx_prob:          0.7
+  mut_prob:         0.2
+  tournament_size:  3
+  alpha:            0.01
+  cv_folds:         3
+
+  # Split
+  val_size:         0.2
+  stratify_bins:    10
+
+  # Model
+  n_estimators:         200
+  max_depth:            0
+  min_samples_split:    5
+  min_samples_leaf:     2
+  max_features:         sqrt
+
+  random_seed:      42
+
+# ── Global pipeline outputs ──────────────────────────────────────────────────
+outputs:
+  final_model:
+    type: uri_folder
+    mode: rw_mount
+  final_metrics:
+    type: uri_folder
+    mode: rw_mount
+  ga_report:
+    type: uri_folder
+    mode: rw_mount
+
+# ── Jobs ─────────────────────────────────────────────────────────────────────
 jobs:
-  extract_job:
-    type: command
-    component: azureml:extract_features:1
-    inputs:
-      train_data: ${{parent.inputs.train_data_path}}
-      test_data: ${{parent.inputs.test_data_path}}
 
-  filter_job:
+  # ── Step 1: Extract tsfresh features ───────────────────────────────────────
+  extract_features_step:
     type: command
-    component: azureml:feature_screening:1
+    component: ../components/extract_features/component.yml
     inputs:
-      train_features: ${{parent.jobs.extract_job.outputs.train_features}}
-      train_target: ${{parent.jobs.extract_job.outputs.train_target}}
-      test_features: ${{parent.jobs.extract_job.outputs.test_features}}
-    depends_on: extract_job
+      input_train:    ${{parent.inputs.raw_train_features}}
+      input_test:     ${{parent.inputs.raw_test_features}}
+      input_labels:   ${{parent.inputs.raw_train_labels}}
+      n_jobs:         ${{parent.inputs.n_jobs}}
+      window_size:    ${{parent.inputs.window_size}}
+    outputs:
+      output_train_features:
+        type: uri_folder
+        mode: rw_mount
+      output_test_features:
+        type: uri_folder
+        mode: rw_mount
+      output_labels:
+        type: uri_folder
+        mode: rw_mount
+    compute: azureml:cpu-cluster
+    resources:
+      instance_count: 1
 
-  ga_job:
+  # ── Step 2: Filter-based reduction ─────────────────────────────────────────
+  reduce_features_step:
     type: command
-    component: azureml:genetic_algorithm:1
+    component: ../components/reduce_features/component.yml
     inputs:
-      train_features: ${{parent.jobs.filter_job.outputs.output_dir}}
-      train_target: ${{parent.jobs.extract_job.outputs.train_target}}
-      pop_size: 20
-      n_gen: 15
-    depends_on: filter_job
+      input_train_features: ${{parent.jobs.extract_features_step.outputs.output_train_features}}
+      input_test_features:  ${{parent.jobs.extract_features_step.outputs.output_test_features}}
+      input_labels:         ${{parent.jobs.extract_features_step.outputs.output_labels}}
+      variance_threshold:   ${{parent.inputs.variance_threshold}}
+      correlation_threshold: ${{parent.inputs.correlation_threshold}}
+      mi_top_k:             ${{parent.inputs.mi_top_k}}
+    outputs:
+      output_train_features:
+        type: uri_folder
+        mode: rw_mount
+      output_test_features:
+        type: uri_folder
+        mode: rw_mount
+      output_selected_cols:
+        type: uri_folder
+        mode: rw_mount
+    compute: azureml:cpu-cluster
 
-  split_job:
+  # ── Step 3: Genetic algorithm selection ────────────────────────────────────
+  genetic_algorithm_step:
     type: command
-    component: azureml:split_turbofan:1
+    component: ../components/genetic_algorithm/component.yml
     inputs:
-      train_features: ${{parent.jobs.ga_job.outputs.output_dir}}
-      train_target: ${{parent.jobs.extract_job.outputs.train_target}}
-      test_features: ${{parent.jobs.ga_job.outputs.output_dir}}
-      test_target: ${{parent.jobs.extract_job.outputs.test_target}}
-      train_ratio: 0.8
-      seed: 42
-    depends_on: ga_job
+      input_train_features: ${{parent.jobs.reduce_features_step.outputs.output_train_features}}
+      input_labels:         ${{parent.jobs.extract_features_step.outputs.output_labels}}
+      input_test_features:  ${{parent.jobs.reduce_features_step.outputs.output_test_features}}
+      population_size:      ${{parent.inputs.population_size}}
+      n_generations:        ${{parent.inputs.n_generations}}
+      cx_prob:              ${{parent.inputs.cx_prob}}
+      mut_prob:             ${{parent.inputs.mut_prob}}
+      tournament_size:      ${{parent.inputs.tournament_size}}
+      alpha:                ${{parent.inputs.alpha}}
+      cv_folds:             ${{parent.inputs.cv_folds}}
+      random_seed:          ${{parent.inputs.random_seed}}
+    outputs:
+      output_train_features:
+        type: uri_folder
+        mode: rw_mount
+      output_test_features:
+        type: uri_folder
+        mode: rw_mount
+      output_ga_report: ${{parent.outputs.ga_report}}
+    compute: azureml:cpu-cluster
 
-  train_job:
+  # ── Step 4: Train/validation split ─────────────────────────────────────────
+  split_dataset_step:
     type: command
-    component: azureml:train_evaluate_turbofan:1
+    component: ../components/split_dataset/component.yml
     inputs:
-      train_features: ${{parent.jobs.split_job.outputs.output_dir}}
-      train_target: ${{parent.jobs.split_job.outputs.output_dir}}
-      val_features: ${{parent.jobs.split_job.outputs.output_dir}}
-      val_target: ${{parent.jobs.split_job.outputs.output_dir}}
-      test_features: ${{parent.jobs.split_job.outputs.output_dir}}
-      test_target: ${{parent.jobs.split_job.outputs.output_dir}}
-      n_estimators: 100
-      random_state: 42
-    depends_on: split_job
+      input_features:  ${{parent.jobs.genetic_algorithm_step.outputs.output_train_features}}
+      input_labels:    ${{parent.jobs.extract_features_step.outputs.output_labels}}
+      val_size:        ${{parent.inputs.val_size}}
+      random_seed:     ${{parent.inputs.random_seed}}
+      stratify_bins:   ${{parent.inputs.stratify_bins}}
+    outputs:
+      output_train:
+        type: uri_folder
+        mode: rw_mount
+      output_val:
+        type: uri_folder
+        mode: rw_mount
+    compute: azureml:cpu-cluster
+
+  # ── Step 5: Train RandomForest and evaluate ─────────────────────────────────
+  train_evaluate_step:
+    type: command
+    component: ../components/train_evaluate/component.yml
+    inputs:
+      input_train:          ${{parent.jobs.split_dataset_step.outputs.output_train}}
+      input_val:            ${{parent.jobs.split_dataset_step.outputs.output_val}}
+      n_estimators:         ${{parent.inputs.n_estimators}}
+      max_depth:            ${{parent.inputs.max_depth}}
+      min_samples_split:    ${{parent.inputs.min_samples_split}}
+      min_samples_leaf:     ${{parent.inputs.min_samples_leaf}}
+      max_features:         ${{parent.inputs.max_features}}
+      n_jobs:               ${{parent.inputs.n_jobs}}
+      random_seed:          ${{parent.inputs.random_seed}}
+    outputs:
+      output_model:   ${{parent.outputs.final_model}}
+      output_metrics: ${{parent.outputs.final_metrics}}
+    compute: azureml:cpu-cluster

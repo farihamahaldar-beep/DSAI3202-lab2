@@ -1,123 +1,211 @@
 import argparse
 import os
+import time
+import json
+import joblib
 import pandas as pd
 import numpy as np
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
-import json
-import joblib
+from sklearn.metrics import (
+    mean_squared_error,
+    mean_absolute_error,
+    r2_score,
+)
+
 
 def parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--train_features", type=str, required=True)
-    parser.add_argument("--train_target", type=str, required=True)
-    parser.add_argument("--val_features", type=str, required=True)
-    parser.add_argument("--val_target", type=str, required=True)
-    parser.add_argument("--test_features", type=str, required=True)
-    parser.add_argument("--test_target", type=str, required=True)
-    parser.add_argument("--output_dir", type=str, required=True)
-    parser.add_argument("--n_estimators", type=int, default=100)
-    parser.add_argument("--random_state", type=int, default=42)
+    parser = argparse.ArgumentParser(description="Train RandomForest for RUL prediction and evaluate")
+    parser.add_argument("--input_train",       type=str, required=True,
+                        help="Parquet folder — training split (features + target_RUL)")
+    parser.add_argument("--input_val",         type=str, required=True,
+                        help="Parquet folder — validation split (features + target_RUL)")
+    parser.add_argument("--output_model",      type=str, required=True,
+                        help="Output folder: saved model (.joblib)")
+    parser.add_argument("--output_metrics",    type=str, required=True,
+                        help="Output folder: metrics JSON and prediction CSV")
+    # Model hyperparameters
+    parser.add_argument("--n_estimators",      type=int,   default=200)
+    parser.add_argument("--max_depth",         type=int,   default=None,
+                        help="Max tree depth (None = unlimited)")
+    parser.add_argument("--min_samples_split", type=int,   default=5)
+    parser.add_argument("--min_samples_leaf",  type=int,   default=2)
+    parser.add_argument("--max_features",      type=str,   default="sqrt",
+                        help="Max features per split: 'sqrt', 'log2', or float 0-1")
+    parser.add_argument("--n_jobs",            type=int,   default=-1)
+    parser.add_argument("--random_seed",       type=int,   default=42)
     return parser.parse_args()
 
-def load_data(path, filename):
-    """Load parquet or CSV file"""
-    if os.path.isdir(path):
-        parquet_path = os.path.join(path, filename)
-        if os.path.exists(parquet_path):
-            if filename.endswith('.parquet'):
-                return pd.read_parquet(parquet_path)
-            else:
-                return pd.read_csv(parquet_path)
-    raise FileNotFoundError(f"Could not find {filename} in {path}")
+
+def load_parquet_folder(folder_path: str) -> pd.DataFrame:
+    files = [f for f in os.listdir(folder_path) if f.endswith(".parquet")]
+    if not files:
+        raise FileNotFoundError(f"No parquet files in {folder_path}")
+    return pd.concat(
+        [pd.read_parquet(os.path.join(folder_path, f)) for f in files],
+        ignore_index=True
+    )
+
+
+def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
+    """Compute RMSE, MAE, R², and score distribution."""
+    rmse = np.sqrt(mean_squared_error(y_true, y_pred))
+    mae  = mean_absolute_error(y_true, y_pred)
+    r2   = r2_score(y_true, y_pred)
+    errors = y_pred - y_true
+
+    # Asymmetric scoring function (penalises late predictions more)
+    def nasa_score(errors):
+        scores = np.where(
+            errors < 0,
+            np.exp(-errors / 13) - 1,
+            np.exp(errors / 10) - 1
+        )
+        return float(np.sum(scores))
+
+    return {
+        "RMSE": float(rmse),
+        "MAE":  float(mae),
+        "R2":   float(r2),
+        "NASA_score": nasa_score(errors),
+        "mean_error":  float(errors.mean()),
+        "std_error":   float(errors.std()),
+        "n_samples":   int(len(y_true)),
+    }
+
 
 def main():
     args = parse_args()
-    
-    print("Loading train/val/test data...")
-    X_train = load_data(args.train_features, "train_features.parquet")
-    y_train = load_data(args.train_target, "train_target.csv")['RUL'].values
-    
-    X_val = load_data(args.val_features, "val_features.parquet")
-    y_val = load_data(args.val_target, "val_target.csv")['RUL'].values
-    
-    X_test = load_data(args.test_features, "test_features.parquet")
-    y_test = load_data(args.test_target, "test_target.csv")['RUL'].values
-    
-    print(f"Train: {X_train.shape}, Val: {X_val.shape}, Test: {X_test.shape}")
-    
-    # Train Random Forest model
-    print(f"Training RandomForest with {args.n_estimators} estimators...")
+    start = time.time()
+
+    print("=" * 60)
+    print("COMPONENT: train_evaluate")
+    print("=" * 60)
+
+    # --- Load ---
+    print("\n[1/4] Loading data ...")
+    train_df = load_parquet_folder(args.input_train)
+    val_df   = load_parquet_folder(args.input_val)
+
+    label_col = "target_RUL"
+    meta_cols  = ["entity_id", label_col]
+    feature_cols = [c for c in train_df.columns if c not in meta_cols]
+
+    X_train = train_df[feature_cols].values.astype(np.float32)
+    y_train = train_df[label_col].values.astype(np.float32)
+    X_val   = val_df[feature_cols].values.astype(np.float32)
+    y_val   = val_df[label_col].values.astype(np.float32)
+
+    # Sanitise
+    X_train = np.nan_to_num(X_train, nan=0.0, posinf=0.0, neginf=0.0)
+    X_val   = np.nan_to_num(X_val,   nan=0.0, posinf=0.0, neginf=0.0)
+
+    print(f"  X_train: {X_train.shape}, y_train range: "
+          f"[{y_train.min():.0f}, {y_train.max():.0f}]")
+    print(f"  X_val:   {X_val.shape},   y_val range: "
+          f"[{y_val.min():.0f}, {y_val.max():.0f}]")
+    print(f"  Features: {len(feature_cols)}")
+
+    # Handle max_depth arg (None or int)
+    max_depth = args.max_depth if args.max_depth and args.max_depth > 0 else None
+
+    # Handle max_features arg (string or float)
+    max_features = args.max_features
+    try:
+        mf_float = float(max_features)
+        if 0.0 < mf_float <= 1.0:
+            max_features = mf_float
+    except ValueError:
+        pass  # keep as string "sqrt" / "log2"
+
+    # --- Train ---
+    print(f"\n[2/4] Training RandomForestRegressor "
+          f"(n_estimators={args.n_estimators}, max_depth={max_depth}) ...")
+    t0 = time.time()
     model = RandomForestRegressor(
         n_estimators=args.n_estimators,
-        random_state=args.random_state,
-        n_jobs=-1
+        max_depth=max_depth,
+        min_samples_split=args.min_samples_split,
+        min_samples_leaf=args.min_samples_leaf,
+        max_features=max_features,
+        n_jobs=args.n_jobs,
+        random_state=args.random_seed,
+        oob_score=True,
     )
     model.fit(X_train, y_train)
-    
-    # Predict on train, val, and test
+    train_time = time.time() - t0
+    print(f"  Training done in {train_time:.1f}s")
+    print(f"  OOB R²: {model.oob_score_:.4f}")
+
+    # --- Evaluate ---
+    print("\n[3/4] Evaluating ...")
     y_train_pred = model.predict(X_train)
-    y_val_pred = model.predict(X_val)
-    y_test_pred = model.predict(X_test)
-    
-    # Calculate metrics
-    train_rmse = np.sqrt(mean_squared_error(y_train, y_train_pred))
-    train_mae = mean_absolute_error(y_train, y_train_pred)
-    train_r2 = r2_score(y_train, y_train_pred)
-    
-    val_rmse = np.sqrt(mean_squared_error(y_val, y_val_pred))
-    val_mae = mean_absolute_error(y_val, y_val_pred)
-    val_r2 = r2_score(y_val, y_val_pred)
-    
-    test_rmse = np.sqrt(mean_squared_error(y_test, y_test_pred))
-    test_mae = mean_absolute_error(y_test, y_test_pred)
-    test_r2 = r2_score(y_test, y_test_pred)
-    
-    print(f"\nTrain RMSE: {train_rmse:.4f}, MAE: {train_mae:.4f}, R²: {train_r2:.4f}")
-    print(f"Val RMSE: {val_rmse:.4f}, MAE: {val_mae:.4f}, R²: {val_r2:.4f}")
-    print(f"Test RMSE: {test_rmse:.4f}, MAE: {test_mae:.4f}, R²: {test_r2:.4f}")
-    
-    # Create output directory
-    os.makedirs(args.output_dir, exist_ok=True)
-    
-    # Save model
-    model_path = os.path.join(args.output_dir, "model.pkl")
+    y_val_pred   = model.predict(X_val)
+
+    train_metrics = compute_metrics(y_train, y_train_pred)
+    val_metrics   = compute_metrics(y_val,   y_val_pred)
+
+    print(f"\n  TRAIN — RMSE: {train_metrics['RMSE']:.2f}  "
+          f"MAE: {train_metrics['MAE']:.2f}  R²: {train_metrics['R2']:.4f}")
+    print(f"  VAL   — RMSE: {val_metrics['RMSE']:.2f}  "
+          f"MAE: {val_metrics['MAE']:.2f}  R²: {val_metrics['R2']:.4f}  "
+          f"NASA_score: {val_metrics['NASA_score']:.2f}")
+
+    # Feature importances (top 20)
+    importances = pd.Series(model.feature_importances_, index=feature_cols)
+    top_features = importances.sort_values(ascending=False).head(20).to_dict()
+
+    # --- Save ---
+    print("\n[4/4] Saving model and metrics ...")
+    os.makedirs(args.output_model,   exist_ok=True)
+    os.makedirs(args.output_metrics, exist_ok=True)
+
+    # Model
+    model_path = os.path.join(args.output_model, "random_forest_rul.joblib")
     joblib.dump(model, model_path)
-    print(f"Model saved to {model_path}")
-    
-    # Save predictions
-    pd.DataFrame({'actual': y_test, 'predicted': y_test_pred}).to_csv(
-        os.path.join(args.output_dir, "test_predictions.csv"), index=False
-    )
-    
-    # Save metrics
-    metrics = {
-        "train": {
-            "rmse": float(train_rmse),
-            "mae": float(train_mae),
-            "r2": float(train_r2)
+    print(f"  Model saved → {model_path}")
+
+    # Metrics JSON
+    metrics_payload = {
+        "train": train_metrics,
+        "val":   val_metrics,
+        "training_time_seconds": train_time,
+        "n_features": len(feature_cols),
+        "oob_r2": float(model.oob_score_),
+        "hyperparameters": {
+            "n_estimators":      args.n_estimators,
+            "max_depth":         str(max_depth),
+            "min_samples_split": args.min_samples_split,
+            "min_samples_leaf":  args.min_samples_leaf,
+            "max_features":      str(max_features),
+            "random_seed":       args.random_seed,
         },
-        "validation": {
-            "rmse": float(val_rmse),
-            "mae": float(val_mae),
-            "r2": float(val_r2)
-        },
-        "test": {
-            "rmse": float(test_rmse),
-            "mae": float(test_mae),
-            "r2": float(test_r2)
-        },
-        "model_params": {
-            "n_estimators": args.n_estimators,
-            "n_features": X_train.shape[1],
-            "random_state": args.random_state
-        }
+        "top_20_features_by_importance": top_features,
     }
-    
-    with open(os.path.join(args.output_dir, "metrics.json"), "w") as f:
-        json.dump(metrics, f, indent=2)
-    
-    print(f"✅ Training complete!")
+    metrics_path = os.path.join(args.output_metrics, "metrics.json")
+    with open(metrics_path, "w") as f:
+        json.dump(metrics_payload, f, indent=2)
+
+    # Predictions CSV
+    preds_df = pd.DataFrame({
+        "entity_id":  val_df["entity_id"].values,
+        "y_true":     y_val,
+        "y_pred":     y_val_pred,
+        "error":      y_val_pred - y_val,
+    })
+    preds_df.to_csv(os.path.join(args.output_metrics, "val_predictions.csv"), index=False)
+
+    # Feature importance CSV
+    importances.sort_values(ascending=False).reset_index().rename(
+        columns={"index": "feature", 0: "importance"}
+    ).to_csv(os.path.join(args.output_metrics, "feature_importances.csv"), index=False)
+
+    elapsed = time.time() - start
+    print(f"\n✅ train_evaluate complete in {elapsed:.1f}s")
+    print(f"   Val RMSE:       {val_metrics['RMSE']:.4f}")
+    print(f"   Val R²:         {val_metrics['R2']:.4f}")
+    print(f"   Val NASA score: {val_metrics['NASA_score']:.2f}")
+    print(f"   Metrics → {metrics_path}")
+
 
 if __name__ == "__main__":
     main()

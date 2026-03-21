@@ -1,54 +1,70 @@
 $schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
-name: train_evaluate_turbofan
-display_name: Train and Evaluate RUL Model
-description: Train RandomForest model on GA-selected features and evaluate on train/validation/test sets
+name: train_evaluate
+display_name: RandomForest RUL Training & Evaluation
+description: >
+  Trains a RandomForestRegressor on the GA-selected, split training data
+  and evaluates on the validation set. Reports RMSE, MAE, R², NASA scoring
+  function, OOB score, feature importances, and prediction CSV.
+version: "1.0"
 type: command
-version: 1
 
 inputs:
-  train_features:
+  input_train:
     type: uri_folder
-    description: Training features folder
-  train_target:
+    description: Parquet folder — training split (features + target_RUL)
+  input_val:
     type: uri_folder
-    description: Training targets folder
-  val_features:
-    type: uri_folder
-    description: Validation features folder
-  val_target:
-    type: uri_folder
-    description: Validation targets folder
-  test_features:
-    type: uri_folder
-    description: Test features folder
-  test_target:
-    type: uri_folder
-    description: Test targets folder
+    description: Parquet folder — validation split (features + target_RUL)
   n_estimators:
     type: integer
-    description: Number of trees in Random Forest
-    default: 100
-  random_state:
+    default: 200
+    description: Number of trees in the forest
+  max_depth:
     type: integer
-    description: Random state for reproducibility
+    default: 0
+    description: Max tree depth (0 = unlimited)
+  min_samples_split:
+    type: integer
+    default: 5
+  min_samples_leaf:
+    type: integer
+    default: 2
+  max_features:
+    type: string
+    default: "sqrt"
+    description: "'sqrt', 'log2', or a float fraction"
+  n_jobs:
+    type: integer
+    default: -1
+    description: Parallel threads (-1 = all cores)
+  random_seed:
+    type: integer
     default: 42
 
 outputs:
-  output_dir:
+  output_model:
     type: uri_folder
-    description: Output folder with model, predictions, and metrics
+    description: Folder containing random_forest_rul.joblib
+  output_metrics:
+    type: uri_folder
+    description: Folder containing metrics.json, val_predictions.csv, feature_importances.csv
+
+environment:
+  conda_file: ./conda.yml
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04
 
 command: >-
-  python train_model.py
-  --train_features ${{inputs.train_features}}
-  --train_target ${{inputs.train_target}}
-  --val_features ${{inputs.val_features}}
-  --val_target ${{inputs.val_target}}
-  --test_features ${{inputs.test_features}}
-  --test_target ${{inputs.test_target}}
-  --output_dir ${{outputs.output_dir}}
+  python train_evaluate.py
+  --input_train ${{inputs.input_train}}
+  --input_val ${{inputs.input_val}}
+  --output_model ${{outputs.output_model}}
+  --output_metrics ${{outputs.output_metrics}}
   --n_estimators ${{inputs.n_estimators}}
-  --random_state ${{inputs.random_state}}
+  --max_depth ${{inputs.max_depth}}
+  --min_samples_split ${{inputs.min_samples_split}}
+  --min_samples_leaf ${{inputs.min_samples_leaf}}
+  --max_features ${{inputs.max_features}}
+  --n_jobs ${{inputs.n_jobs}}
+  --random_seed ${{inputs.random_seed}}
 
 code: .
-environment: azureml:AzureML-sklearn-1.1-ubuntu20.04-py38-cpu@latest

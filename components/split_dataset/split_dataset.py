@@ -1,73 +1,115 @@
 import argparse
 import os
+import time
 import pandas as pd
+import numpy as np
 from sklearn.model_selection import train_test_split
 
+
 def parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--train_features", type=str, required=True)
-    parser.add_argument("--train_target", type=str, required=True)
-    parser.add_argument("--test_features", type=str, required=True)
-    parser.add_argument("--test_target", type=str, required=True)
-    parser.add_argument("--output_dir", type=str, required=True)
-    parser.add_argument("--train_ratio", type=float, default=0.8)
-    parser.add_argument("--seed", type=int, default=42)
+    parser = argparse.ArgumentParser(description="Split feature-selected train data into train/validation sets")
+    parser.add_argument("--input_features", type=str, required=True,
+                        help="Parquet folder — GA-selected train features")
+    parser.add_argument("--input_labels",   type=str, required=True,
+                        help="Parquet folder — aligned RUL labels")
+    parser.add_argument("--output_train",   type=str, required=True,
+                        help="Output: training split (features + label)")
+    parser.add_argument("--output_val",     type=str, required=True,
+                        help="Output: validation split (features + label)")
+    parser.add_argument("--val_size",       type=float, default=0.2,
+                        help="Fraction of data for validation (default 0.20)")
+    parser.add_argument("--random_seed",    type=int,   default=42)
+    parser.add_argument("--stratify_bins",  type=int,   default=10,
+                        help="Bin count for stratified split on RUL (0 = no stratify)")
     return parser.parse_args()
 
-def load_data(path):
-    """Load parquet file"""
-    if os.path.isdir(path):
-        parquet_path = os.path.join(path, "train_features_selected.parquet")
-        if os.path.exists(parquet_path):
-            return pd.read_parquet(parquet_path)
-    raise FileNotFoundError(f"Could not find data in {path}")
 
-def load_target(path):
-    """Load target CSV"""
-    if os.path.isdir(path):
-        csv_path = os.path.join(path, "train_target.csv")
-        if os.path.exists(csv_path):
-            return pd.read_csv(csv_path)['RUL'].values
-    raise FileNotFoundError(f"Could not find target in {path}")
+def load_parquet_folder(folder_path: str) -> pd.DataFrame:
+    files = [f for f in os.listdir(folder_path) if f.endswith(".parquet")]
+    if not files:
+        raise FileNotFoundError(f"No parquet files in {folder_path}")
+    return pd.concat(
+        [pd.read_parquet(os.path.join(folder_path, f)) for f in files],
+        ignore_index=True
+    )
+
 
 def main():
     args = parse_args()
-    
-    print("Loading GA-selected training features and targets...")
-    X_train = load_data(args.train_features)
-    y_train = load_target(args.train_target)
-    
-    print("Loading test features and targets...")
-    X_test = load_data(args.test_features.replace("train_features", "test_features"))
-    y_test = load_target(args.test_target.replace("train_target", "test_target"))
-    
-    print(f"Train features: {X_train.shape}, Test features: {X_test.shape}")
-    
-    # Split training data into train and validation
-    X_train_split, X_val, y_train_split, y_val = train_test_split(
-        X_train, y_train,
-        test_size=(1 - args.train_ratio),
-        random_state=args.seed,
-        shuffle=True
+    start = time.time()
+
+    print("=" * 60)
+    print("COMPONENT: split_dataset")
+    print("=" * 60)
+
+    # --- Load ---
+    print("\n[1/2] Loading data ...")
+    features_df = load_parquet_folder(args.input_features)
+    labels_df   = load_parquet_folder(args.input_labels)
+
+    # Merge features with labels on entity_id
+    df = features_df.merge(
+        labels_df[["entity_id", "target_RUL"]],
+        on="entity_id",
+        how="inner"
     )
-    
-    print(f"Train: {X_train_split.shape[0]} samples")
-    print(f"Validation: {X_val.shape[0]} samples")
-    print(f"Test: {X_test.shape[0]} samples")
-    
-    # Create output directory
-    os.makedirs(args.output_dir, exist_ok=True)
-    
-    # Save splits
-    X_train_split.to_parquet(os.path.join(args.output_dir, "train_features.parquet"))
-    X_val.to_parquet(os.path.join(args.output_dir, "val_features.parquet"))
-    X_test.to_parquet(os.path.join(args.output_dir, "test_features.parquet"))
-    
-    pd.DataFrame({'RUL': y_train_split}).to_csv(os.path.join(args.output_dir, "train_target.csv"), index=False)
-    pd.DataFrame({'RUL': y_val}).to_csv(os.path.join(args.output_dir, "val_target.csv"), index=False)
-    pd.DataFrame({'RUL': y_test}).to_csv(os.path.join(args.output_dir, "test_target.csv"), index=False)
-    
-    print(f"✅ Data split complete!")
+    df.dropna(subset=["target_RUL"], inplace=True)
+    df.reset_index(drop=True, inplace=True)
+
+    print(f"  Merged dataset: {len(df)} rows, {len(df.columns)} columns")
+    print(f"  RUL range: [{df['target_RUL'].min():.0f}, {df['target_RUL'].max():.0f}]")
+
+    # --- Split ---
+    print(f"\n[2/2] Splitting {int((1-args.val_size)*100)}/{int(args.val_size*100)} "
+          f"train/val (seed={args.random_seed}) ...")
+
+    stratify_col = None
+    if args.stratify_bins > 0:
+        # Bin RUL for stratified split (ensures equal distribution of engine health)
+        df["_rul_bin"] = pd.cut(
+            df["target_RUL"],
+            bins=args.stratify_bins,
+            labels=False,
+            duplicates="drop"
+        )
+        # Only stratify if each bin has >= 2 samples
+        bin_counts = df["_rul_bin"].value_counts()
+        if bin_counts.min() >= 2:
+            stratify_col = df["_rul_bin"]
+            print(f"  Stratifying on {args.stratify_bins} RUL bins")
+        else:
+            print("  Skipping stratification (some bins have < 2 samples)")
+        df.drop(columns=["_rul_bin"], inplace=True)
+
+    train_df, val_df = train_test_split(
+        df,
+        test_size=args.val_size,
+        random_state=args.random_seed,
+        stratify=stratify_col,
+    )
+
+    train_df = train_df.reset_index(drop=True)
+    val_df   = val_df.reset_index(drop=True)
+
+    print(f"  Train split: {len(train_df)} rows")
+    print(f"  Val   split: {len(val_df)} rows")
+    print(f"  Train RUL mean: {train_df['target_RUL'].mean():.1f} ± "
+          f"{train_df['target_RUL'].std():.1f}")
+    print(f"  Val   RUL mean: {val_df['target_RUL'].mean():.1f} ± "
+          f"{val_df['target_RUL'].std():.1f}")
+
+    # --- Save ---
+    os.makedirs(args.output_train, exist_ok=True)
+    os.makedirs(args.output_val,   exist_ok=True)
+
+    train_df.to_parquet(os.path.join(args.output_train, "data.parquet"), index=False)
+    val_df.to_parquet(  os.path.join(args.output_val,   "data.parquet"), index=False)
+
+    elapsed = time.time() - start
+    print(f"\n✅ split_dataset complete in {elapsed:.1f}s")
+    print(f"   Train → {args.output_train}")
+    print(f"   Val   → {args.output_val}")
+
 
 if __name__ == "__main__":
     main()

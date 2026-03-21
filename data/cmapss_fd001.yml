@@ -1,0 +1,6 @@
+$schema: https://azuremlschemas.azureedge.net/latest/data.schema.json
+name: turbofan_fd001_processed
+version: 1
+type: uri_folder
+path: azureml://datastores/blobkey/paths/processed/
+description: NASA C-MAPSS FD001 turbofan dataset - preprocessed and ready for feature engineering

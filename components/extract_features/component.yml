@@ -1,28 +1,56 @@
 $schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
 name: extract_features
-display_name: Extract Time-Series Features
-description: Extract features using tsfresh with EfficientFCParameters from preprocessed turbofan data
+display_name: tsfresh Feature Extraction
+description: >
+  Extracts time-series features from turbofan engine sensor data using
+  tsfresh EfficientFCParameters with a rolling-window strategy.
+  Produces per-engine-per-cycle feature vectors aligned with RUL labels.
+version: "2.0"
 type: command
-version: 1
 
 inputs:
-  train_data:
+  input_train:
     type: uri_folder
-    description: Preprocessed training data folder
-  test_data:
+    description: Parquet folder — train_tsfresh_ready (engine_id, cycle, sensors)
+  input_test:
     type: uri_folder
-    description: Preprocessed test data folder
+    description: Parquet folder — test_tsfresh_ready (engine_id, cycle, sensors)
+  input_labels:
+    type: uri_folder
+    description: Parquet folder — train_rul_labels (engine_id, cycle, target_RUL)
+  n_jobs:
+    type: integer
+    default: 4
+    description: Parallel workers for tsfresh extraction
+  window_size:
+    type: integer
+    default: 30
+    description: Rolling window size (number of cycles per time-series segment)
 
 outputs:
-  output_dir:
+  output_train_features:
     type: uri_folder
-    description: Output folder containing extracted features and targets
+    description: Extracted train feature matrix (parquet)
+  output_test_features:
+    type: uri_folder
+    description: Extracted test feature matrix (parquet)
+  output_labels:
+    type: uri_folder
+    description: Aligned RUL labels for train rows (parquet)
+
+environment:
+  conda_file: ./conda.yml
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04
 
 command: >-
   python extract_features.py
-  --train_data ${{inputs.train_data}}
-  --test_data ${{inputs.test_data}}
-  --output_dir ${{outputs.output_dir}}
+  --input_train ${{inputs.input_train}}
+  --input_test ${{inputs.input_test}}
+  --input_labels ${{inputs.input_labels}}
+  --output_train_features ${{outputs.output_train_features}}
+  --output_test_features ${{outputs.output_test_features}}
+  --output_labels ${{outputs.output_labels}}
+  --n_jobs ${{inputs.n_jobs}}
+  --window_size ${{inputs.window_size}}
 
 code: .
-environment: azureml:AzureML-sklearn-1.1-ubuntu20.04-py38-cpu@latest

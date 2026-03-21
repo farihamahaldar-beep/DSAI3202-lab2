@@ -1,32 +1,62 @@
 $schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
 name: reduce_features
-display_name: Filter-Based Feature Selection
-description: Apply variance, correlation, and mutual information filters to reduce feature dimensionality
+display_name: Filter-Based Feature Reduction
+description: >
+  Reduces tsfresh feature matrix using three sequential filter methods:
+  (1) variance threshold, (2) pairwise correlation pruning,
+  (3) mutual information ranking. Outputs filtered train/test matrices
+  and a JSON list of selected feature names.
+version: "1.0"
 type: command
-version: 1
 
 inputs:
-  train_features:
+  input_train_features:
     type: uri_folder
-    description: Extracted training features folder
-  train_target:
+    description: Parquet folder — extracted train features from extract_features component
+  input_test_features:
     type: uri_folder
-    description: Training targets folder
-  test_features:
+    description: Parquet folder — extracted test features from extract_features component
+  input_labels:
     type: uri_folder
-    description: Extracted test features folder
+    description: Parquet folder — aligned RUL labels
+  variance_threshold:
+    type: number
+    default: 0.01
+    description: Minimum variance; features below this are dropped
+  correlation_threshold:
+    type: number
+    default: 0.95
+    description: Drop one feature from pairs with absolute correlation >= threshold
+  mi_top_k:
+    type: integer
+    default: 100
+    description: Retain top-k features ranked by mutual information with RUL
 
 outputs:
-  output_dir:
+  output_train_features:
     type: uri_folder
-    description: Output folder containing filtered features
+    description: Filtered train feature matrix (parquet)
+  output_test_features:
+    type: uri_folder
+    description: Filtered test feature matrix (parquet)
+  output_selected_cols:
+    type: uri_folder
+    description: Folder containing selected_features.json
+
+environment:
+  conda_file: ./conda.yml
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04
 
 command: >-
   python reduce_features.py
-  --train_features ${{inputs.train_features}}
-  --train_target ${{inputs.train_target}}
-  --test_features ${{inputs.test_features}}
-  --output_dir ${{outputs.output_dir}}
+  --input_train_features ${{inputs.input_train_features}}
+  --input_test_features ${{inputs.input_test_features}}
+  --input_labels ${{inputs.input_labels}}
+  --output_train_features ${{outputs.output_train_features}}
+  --output_test_features ${{outputs.output_test_features}}
+  --output_selected_cols ${{outputs.output_selected_cols}}
+  --variance_threshold ${{inputs.variance_threshold}}
+  --correlation_threshold ${{inputs.correlation_threshold}}
+  --mi_top_k ${{inputs.mi_top_k}}
 
 code: .
-environment: azureml:AzureML-sklearn-1.1-ubuntu20.04-py38-cpu@latest

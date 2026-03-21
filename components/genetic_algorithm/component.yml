@@ -1,38 +1,86 @@
 $schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
 name: genetic_algorithm
-display_name: Genetic Algorithm Feature Selection
-description: Use DEAP genetic algorithm to evolve optimal feature subset with binary chromosome representation
+display_name: DEAP Genetic Algorithm Feature Selection
+description: >
+  Evolves an optimal binary feature-selection mask using DEAP.
+  Chromosome = binary vector over the input feature set.
+  Fitness = -RMSE (cross-validated RandomForest) - alpha * feature_ratio.
+  Outputs the GA-selected train/test matrices and a full run report.
+version: "1.0"
 type: command
-version: 1
 
 inputs:
-  train_features:
+  input_train_features:
     type: uri_folder
-    description: Filtered training features folder
-  train_target:
+    description: Parquet folder — filtered train features (from reduce_features)
+  input_labels:
     type: uri_folder
-    description: Training targets folder
-  pop_size:
+    description: Parquet folder — aligned RUL labels
+  input_test_features:
+    type: uri_folder
+    description: Parquet folder — filtered test features (from reduce_features)
+  population_size:
     type: integer
-    description: Population size
-    default: 20
-  n_gen:
+    default: 50
+    description: Number of individuals in the GA population
+  n_generations:
     type: integer
-    description: Number of generations
-    default: 15
+    default: 30
+    description: Number of GA generations
+  cx_prob:
+    type: number
+    default: 0.7
+    description: Crossover probability
+  mut_prob:
+    type: number
+    default: 0.2
+    description: Mutation probability
+  tournament_size:
+    type: integer
+    default: 3
+    description: Tournament size for selection
+  alpha:
+    type: number
+    default: 0.01
+    description: Penalty coefficient for feature count in fitness function
+  cv_folds:
+    type: integer
+    default: 3
+    description: Cross-validation folds used in fitness evaluation
+  random_seed:
+    type: integer
+    default: 42
 
 outputs:
-  output_dir:
+  output_train_features:
     type: uri_folder
-    description: Output folder with GA-selected features and metrics
+    description: GA-selected train feature matrix (parquet)
+  output_test_features:
+    type: uri_folder
+    description: GA-selected test feature matrix (parquet)
+  output_ga_report:
+    type: uri_folder
+    description: Folder containing ga_report.json with selected features and evolution log
+
+environment:
+  conda_file: ./conda.yml
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04
 
 command: >-
-  python optimize_features.py
-  --train_features ${{inputs.train_features}}
-  --train_target ${{inputs.train_target}}
-  --output_dir ${{outputs.output_dir}}
-  --pop_size ${{inputs.pop_size}}
-  --n_gen ${{inputs.n_gen}}
+  python genetic_algorithm.py
+  --input_train_features ${{inputs.input_train_features}}
+  --input_labels ${{inputs.input_labels}}
+  --input_test_features ${{inputs.input_test_features}}
+  --output_train_features ${{outputs.output_train_features}}
+  --output_test_features ${{outputs.output_test_features}}
+  --output_ga_report ${{outputs.output_ga_report}}
+  --population_size ${{inputs.population_size}}
+  --n_generations ${{inputs.n_generations}}
+  --cx_prob ${{inputs.cx_prob}}
+  --mut_prob ${{inputs.mut_prob}}
+  --tournament_size ${{inputs.tournament_size}}
+  --alpha ${{inputs.alpha}}
+  --cv_folds ${{inputs.cv_folds}}
+  --random_seed ${{inputs.random_seed}}
 
 code: .
-environment: azureml:AzureML-sklearn-1.1-ubuntu20.04-py38-cpu@latest

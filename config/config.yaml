@@ -1,0 +1,22 @@
+storage:
+  account_name: datalake60306249
+  container_processed: processed
+  container_curated: curated
+  
+compute:
+  cluster_name: cpu-cluster
+  instance_type: Standard_D4s_v3
+
+pipeline:
+  population_size: 20
+  generations: 15
+  cv_folds: 3
+  
+model:
+  n_estimators: 100
+  random_state: 42
+  train_ratio: 0.8
+
+data:
+  dataset_name: turbofan_fd001
+  version: 1
