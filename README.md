@@ -100,6 +100,7 @@ LAB5/
 ├── pipelines/
 │   └── feature_pipeline.yml
 └── README.md
+└── .gitignore
 ```
 
 ---
