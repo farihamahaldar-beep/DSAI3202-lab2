@@ -8,6 +8,7 @@ pool:
 
 variables:
   azureSubscription: 'SC-UDST-CCIT-DSAI3202'
+  subscriptionId: 'a485bb50-61aa-4b2f-bc7f-b6b53539b9d3'
   resourceGroup: 'rg-60306249'
   workspace: 'Amazon-lab2-60306249'
 
@@ -28,6 +29,7 @@ steps:
     scriptType: 'bash'
     scriptLocation: 'inlineScript'
     inlineScript: |
+      az account set --subscription $(subscriptionId)
       az configure --defaults group=$(resourceGroup) workspace=$(workspace)
       az ml job create --file jobs/train_job.yml
   displayName: 'Submit Training Job to Azure ML'
