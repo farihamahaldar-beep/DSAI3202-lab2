@@ -1,5 +1,5 @@
 $schema: https://azuremlschemas.azureedge.net/latest/data.schema.json
 type: uri_folder
 name: amazon_review_merged_features_train
-description: Merged training features from Lab 4 pipeline (duplicates removed)
-path: azureml://subscriptions/a485bb50-61aa-4b2f-bc7f-b6b53539b9d3/resourcegroups/rg-60306249/workspaces/Amazon-lab2-60306249/datastores/workspaceblobstore/paths/azureml/f79311f7-0113-4cef-99a2-d1a45a7cb373/output_data/
+description: Merged training features from Lab 4 pipeline (sentiment bug fixed, duplicates removed)
+path: azureml://subscriptions/a485bb50-61aa-4b2f-bc7f-b6b53539b9d3/resourcegroups/rg-60306249/workspaces/Amazon-lab2-60306249/datastores/workspaceblobstore/paths/azureml/696505ab-88fd-4bd4-9f5b-ea1b1cf45c2a/output_data/

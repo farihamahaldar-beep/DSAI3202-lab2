@@ -49,7 +49,7 @@ def create_labels(df):
     
     # Binary classification: rating >= 4 is positive (1), else negative (0)
     # Overall is normalized 0-1, so >= 4 out of 5 becomes >= 0.8
-    df["label"] = (df["overall"] >= 0.8).astype(int)
+    df["label"] = (df["overall"] >= 0.6).astype(int)
     return df
 
 # --------------------------------------------------
@@ -219,7 +219,7 @@ def main():
     # Train model
     print("\nTraining model...")
     model = LogisticRegression(
-        C=0.01,  # ← Stronger regularization
+        C=0.02,  # ← Stronger regularization
         class_weight='balanced',  # ← Handle imbalance
         max_iter=args.max_iter,
         random_state=42,

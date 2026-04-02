@@ -39,7 +39,7 @@ def main():
     # Initialize VADER sentiment analyzer
     sia = SentimentIntensityAnalyzer()
     
-    # Extract sentiment features - KEEP SAME INDEX
+    # Extract sentiment features ONLY
     sentiment_scores = []
     for text in df[args.text_column]:
         scores = sia.polarity_scores(str(text))
@@ -50,18 +50,26 @@ def main():
             'sentiment_compound': scores['compound']
         })
     
-    # Create dataframe with SAME INDEX as original
+    # Create dataframe with sentiment features ONLY (same index as input)
     sentiment_df = pd.DataFrame(sentiment_scores, index=df.index)
     
-    # Add sentiment features to original dataframe by column, preserving index
-    df = pd.concat([df, sentiment_df], axis=1)
+    # Add entity keys back (asin, reviewerID needed for merging)
+    if 'asin' in df.columns:
+        sentiment_df['asin'] = df['asin'].values
+    if 'reviewerID' in df.columns:
+        sentiment_df['reviewerID'] = df['reviewerID'].values
     
-    print(f"Output shape: {df.shape}")
+    # Add label if it exists (preserve for downstream)
+    if 'overall' in df.columns:
+        sentiment_df['overall'] = df['overall'].values
+    
+    print(f"Output shape: {sentiment_df.shape}")
+    print(f"Columns: {list(sentiment_df.columns)}")
     print("Successfully created sentiment features.")
     
-    # Save the output
+    # Save only sentiment features + entity keys
     os.makedirs(args.output_data, exist_ok=True)
-    df.to_parquet(os.path.join(args.output_data, "data.parquet"), index=False)
+    sentiment_df.to_parquet(os.path.join(args.output_data, "data.parquet"), index=False)
 
 if __name__ == "__main__":
     main()

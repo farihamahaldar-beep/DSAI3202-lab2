@@ -1,5 +1,5 @@
 $schema: https://azuremlschemas.azureedge.net/latest/data.schema.json
 type: uri_folder
 name: amazon_review_merged_features_val
-description: Merged validation features from Lab 4 pipeline (duplicates removed)
-path: azureml://subscriptions/a485bb50-61aa-4b2f-bc7f-b6b53539b9d3/resourcegroups/rg-60306249/workspaces/Amazon-lab2-60306249/datastores/workspaceblobstore/paths/azureml/0a6075cd-7256-4bc1-8f49-01553f01e075/output_data/
+description: Merged validation features from Lab 4 pipeline (sentiment bug fixed, duplicates removed)
+path: azureml://subscriptions/a485bb50-61aa-4b2f-bc7f-b6b53539b9d3/resourcegroups/rg-60306249/workspaces/Amazon-lab2-60306249/datastores/workspaceblobstore/paths/azureml/87c9e1f6-06ee-4db0-a9dd-3e7b45deaa0b/output_data/
