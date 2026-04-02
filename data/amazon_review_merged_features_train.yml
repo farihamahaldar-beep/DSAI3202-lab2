@@ -1,0 +1,6 @@
+$schema: https://azuremlschemas.azureedge.net/latest/data.schema.json
+name: amazon_review_merged_features_train
+version: 1
+type: uri_folder
+path: azureml://subscriptions/a485bb50-61aa-4b2f-bc7f-b6b53539b9d3/resourcegroups/rg-60306249/workspaces/Amazon-lab2-60306249/datastores/workspaceblobstore/paths/azureml/81cef609-aef8-4b99-8f39-7d17e3f90e71/output_data/
+description: Merged training features from Lab 4 pipeline

@@ -1,0 +1,6 @@
+$schema: https://azuremlschemas.azureedge.net/latest/data.schema.json
+name: amazon_review_merged_features_deploy
+version: 1
+type: uri_folder
+path: azureml://subscriptions/a485bb50-61aa-4b2f-bc7f-b6b53539b9d3/resourcegroups/rg-60306249/workspaces/Amazon-lab2-60306249/datastores/workspaceblobstore/paths/azureml/6a9a8360-f662-4a5d-b7bb-4ea6292b96a1/output_data/
+description: Merged deployment features from Lab 4 pipeline
