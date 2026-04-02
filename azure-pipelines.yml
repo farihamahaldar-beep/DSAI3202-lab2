@@ -1,0 +1,39 @@
+trigger:
+  branches:
+    include:
+    - Assignment-2
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  azureSubscription: 'SC-UDST-CCIT-DSAI3202-1'
+  resourceGroup: 'rg-60306249'
+  workspace: 'Amazon-lab2-60306249'
+
+steps:
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: '3.9'
+  displayName: 'Use Python 3.9'
+
+- script: |
+    pip install azure-cli
+    pip install azure-ml
+  displayName: 'Install Azure CLI and ML SDK'
+
+- task: AzureCLI@2
+  inputs:
+    azureSubscription: $(azureSubscription)
+    scriptType: 'bash'
+    scriptLocation: 'inlineScript'
+    inlineScript: |
+      az extension add -n ml
+      az configure --defaults group=$(resourceGroup) workspace=$(workspace)
+      az ml job create --file jobs/train_job.yml
+  displayName: 'Submit Training Job to Azure ML'
+
+- script: |
+    echo "Training job submitted successfully!"
+    echo "Monitor at: https://ml.azure.com/jobs"
+  displayName: 'Print Job Status'
