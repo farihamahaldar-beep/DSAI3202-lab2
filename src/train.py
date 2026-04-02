@@ -221,7 +221,8 @@ def main():
     # Train model
     print("\nTraining model...")
     model = LogisticRegression(
-        C=0.1,
+        C=0.01,  # ← Stronger regularization
+        class_weight='balanced',  # ← Handle imbalance
         max_iter=args.max_iter,
         random_state=42,
         verbose=0

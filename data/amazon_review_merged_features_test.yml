@@ -1,6 +1,5 @@
 $schema: https://azuremlschemas.azureedge.net/latest/data.schema.json
-name: amazon_review_merged_features_test
-version: 1
 type: uri_folder
-path: azureml://subscriptions/a485bb50-61aa-4b2f-bc7f-b6b53539b9d3/resourcegroups/rg-60306249/workspaces/Amazon-lab2-60306249/datastores/workspaceblobstore/paths/azureml/28378641-f865-4ae6-b5aa-1334a7069a47/output_data/
-description: Merged test features from Lab 4 pipeline
+name: amazon_review_merged_features_test
+description: Merged test features from Lab 4 pipeline (duplicates removed)
+path: azureml://subscriptions/a485bb50-61aa-4b2f-bc7f-b6b53539b9d3/resourcegroups/rg-60306249/workspaces/Amazon-lab2-60306249/datastores/workspaceblobstore/paths/azureml/3ec41176-6f0a-4a94-8323-064f7eeb4d27/output_data/
