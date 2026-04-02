@@ -7,7 +7,7 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  azureSubscription: 'SC-UDST-CCIT-DSAI3202-1'
+  azureSubscription: 'SC-UDST-CCIT-DSAI3202'
   resourceGroup: 'rg-60306249'
   workspace: 'Amazon-lab2-60306249'
 
@@ -19,8 +19,8 @@ steps:
 
 - script: |
     pip install azure-cli
-    pip install azure-ml
-  displayName: 'Install Azure CLI and ML SDK'
+    az extension add -n ml
+  displayName: 'Install Azure CLI'
 
 - task: AzureCLI@2
   inputs:
@@ -28,12 +28,10 @@ steps:
     scriptType: 'bash'
     scriptLocation: 'inlineScript'
     inlineScript: |
-      az extension add -n ml
       az configure --defaults group=$(resourceGroup) workspace=$(workspace)
       az ml job create --file jobs/train_job.yml
   displayName: 'Submit Training Job to Azure ML'
 
 - script: |
     echo "Training job submitted successfully!"
-    echo "Monitor at: https://ml.azure.com/jobs"
-  displayName: 'Print Job Status'
+  displayName: 'Confirmation'
