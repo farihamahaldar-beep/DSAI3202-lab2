@@ -21,9 +21,14 @@ def parse_args():
 def main():
     args = parse_args()
 
-    # IMPORTANT: input_data is a folder (uri_folder)
-    input_path = os.path.join(args.input_data, "data.parquet")
+    # Handle folder or direct path
+    if os.path.isdir(args.input_data):
+        input_path = os.path.join(args.input_data, "data.parquet")
+    else:
+        input_path = args.input_data
+    
     df = pd.read_parquet(input_path)
+    print(f"Input shape: {df.shape}")
 
     if args.text_column not in df.columns:
         raise ValueError(f"Column {args.text_column} not found!")
@@ -42,15 +47,15 @@ def main():
 
     embedding_dim = embeddings.shape[1]
 
+    # CREATE DATAFRAME WITH SAME INDEX AS ORIGINAL
     embedding_df = pd.DataFrame(
         embeddings,
-        columns=[f"bert_embedding_{i}" for i in range(embedding_dim)]
+        columns=[f"bert_embedding_{i}" for i in range(embedding_dim)],
+        index=df.index  # ← KEY FIX
     )
 
-    df = pd.concat(
-        [df.reset_index(drop=True), embedding_df.reset_index(drop=True)],
-        axis=1
-    )
+    # Concatenate preserving index
+    df = pd.concat([df, embedding_df], axis=1)
 
     os.makedirs(args.output_data, exist_ok=True)
     df.to_parquet(
@@ -59,6 +64,7 @@ def main():
     )
 
     print("Semantic embeddings extracted successfully!")
+    print(f"Output shape: {df.shape}")
     print(f"Embedding dimension: {embedding_dim}")
 
 

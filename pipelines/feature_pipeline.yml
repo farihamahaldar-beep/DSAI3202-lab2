@@ -15,6 +15,7 @@ jobs:
     inputs:
       data: ${{parent.inputs.sampled_data}}
 
+  # NORMALIZE ALL 4 SPLITS
   normalize_train:
     type: command
     component: azureml:normalize_text@latest
@@ -33,38 +34,133 @@ jobs:
     inputs:
       data: ${{parent.jobs.split.outputs.test}}
 
+  normalize_deploy:
+    type: command
+    component: azureml:normalize_text@latest
+    inputs:
+      data: ${{parent.jobs.split.outputs.deploy}}
+
+  # LENGTH FEATURES FOR ALL SPLITS
   length_train:
     type: command
     component: azureml:review_length_features@latest
     inputs:
       input_data: ${{parent.jobs.normalize_train.outputs.out}}
 
+  length_val:
+    type: command
+    component: azureml:review_length_features@latest
+    inputs:
+      input_data: ${{parent.jobs.normalize_val.outputs.out}}
+
+  length_test:
+    type: command
+    component: azureml:review_length_features@latest
+    inputs:
+      input_data: ${{parent.jobs.normalize_test.outputs.out}}
+
+  length_deploy:
+    type: command
+    component: azureml:review_length_features@latest
+    inputs:
+      input_data: ${{parent.jobs.normalize_deploy.outputs.out}}
+
+  # SENTIMENT FEATURES FOR ALL SPLITS
   sentiment_train:
     type: command
     component: azureml:sentiment_features@latest
     inputs:
       input_data: ${{parent.jobs.normalize_train.outputs.out}}
 
+  sentiment_val:
+    type: command
+    component: azureml:sentiment_features@latest
+    inputs:
+      input_data: ${{parent.jobs.normalize_val.outputs.out}}
+
+  sentiment_test:
+    type: command
+    component: azureml:sentiment_features@latest
+    inputs:
+      input_data: ${{parent.jobs.normalize_test.outputs.out}}
+
+  sentiment_deploy:
+    type: command
+    component: azureml:sentiment_features@latest
+    inputs:
+      input_data: ${{parent.jobs.normalize_deploy.outputs.out}}
+
+  # TF-IDF - FIT ON TRAIN, APPLY TO ALL
   tfidf:
     type: command
     component: azureml:tfidf_features@latest
     inputs:
-      input_data: ${{parent.jobs.normalize_train.outputs.out}}
+      train_data: ${{parent.jobs.normalize_train.outputs.out}}
+      val_data: ${{parent.jobs.normalize_val.outputs.out}}
+      test_data: ${{parent.jobs.normalize_test.outputs.out}}
+      deploy_data: ${{parent.jobs.normalize_deploy.outputs.out}}
       text_column: "reviewText"
       max_features: 100
       ngram_range: "1,2"
 
+  # SBERT EMBEDDINGS FOR ALL SPLITS
   sbert_train:
     type: command
     component: azureml:semantic_embedding_features@latest
     inputs:
       input_data: ${{parent.jobs.normalize_train.outputs.out}}
 
-  merge_all:
+  sbert_val:
+    type: command
+    component: azureml:semantic_embedding_features@latest
+    inputs:
+      input_data: ${{parent.jobs.normalize_val.outputs.out}}
+
+  sbert_test:
+    type: command
+    component: azureml:semantic_embedding_features@latest
+    inputs:
+      input_data: ${{parent.jobs.normalize_test.outputs.out}}
+
+  sbert_deploy:
+    type: command
+    component: azureml:semantic_embedding_features@latest
+    inputs:
+      input_data: ${{parent.jobs.normalize_deploy.outputs.out}}
+
+  # MERGE ALL FEATURES FOR EACH SPLIT
+  merge_train:
     type: command
     component: azureml:merge_features@latest
     inputs:
       review_length_data: ${{parent.jobs.length_train.outputs.output_data}}
       sentiment_data: ${{parent.jobs.sentiment_train.outputs.output_data}}
-      tfidf_data: ${{parent.jobs.tfidf.outputs.output_data}}
+      tfidf_data: ${{parent.jobs.tfidf.outputs.train_out}}
       semantic_embedding_data: ${{parent.jobs.sbert_train.outputs.output_data}}
+
+  merge_val:
+    type: command
+    component: azureml:merge_features@latest
+    inputs:
+      review_length_data: ${{parent.jobs.length_val.outputs.output_data}}
+      sentiment_data: ${{parent.jobs.sentiment_val.outputs.output_data}}
+      tfidf_data: ${{parent.jobs.tfidf.outputs.val_out}}
+      semantic_embedding_data: ${{parent.jobs.sbert_val.outputs.output_data}}
+
+  merge_test:
+    type: command
+    component: azureml:merge_features@latest
+    inputs:
+      review_length_data: ${{parent.jobs.length_test.outputs.output_data}}
+      sentiment_data: ${{parent.jobs.sentiment_test.outputs.output_data}}
+      tfidf_data: ${{parent.jobs.tfidf.outputs.test_out}}
+      semantic_embedding_data: ${{parent.jobs.sbert_test.outputs.output_data}}
+
+  merge_deploy:
+    type: command
+    component: azureml:merge_features@latest
+    inputs:
+      review_length_data: ${{parent.jobs.length_deploy.outputs.output_data}}
+      sentiment_data: ${{parent.jobs.sentiment_deploy.outputs.output_data}}
+      tfidf_data: ${{parent.jobs.tfidf.outputs.deploy_out}}
+      semantic_embedding_data: ${{parent.jobs.sbert_deploy.outputs.output_data}}

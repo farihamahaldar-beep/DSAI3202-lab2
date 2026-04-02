@@ -1,40 +1,49 @@
 $schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
 name: tfidf_features
 display_name: TF-IDF Feature Extraction
-description: Extracts TF-IDF features from review text using scikit-learn's TfidfVectorizer.
 type: command
 inputs:
-  input_data:
+  train_data:
     type: uri_folder
-    description: Input data folder containing CSV files
+  val_data:
+    type: uri_folder
+  test_data:
+    type: uri_folder
+  deploy_data:
+    type: uri_folder
   text_column:
     type: string
-    description: Name of the text column in the input data
     default: "reviewText"
   max_features:
     type: integer
-    description: Maximum number of features (vocabulary size)
     default: 100
   ngram_range:
     type: string
-    description: N-gram range as "min,max" (e.g., "1,2")
     default: "1,2"
 outputs:
-  output_data:
+  train_out:
     type: uri_folder
-    description: Output folder containing data with TF-IDF features
-  vectorizer:
+  val_out:
     type: uri_folder
-    description: Output folder containing the fitted vectorizer
-environment:
-  conda_file: ./conda.yml
-  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04
-command: >-
+  test_out:
+    type: uri_folder
+  deploy_out:
+    type: uri_folder
+  vectorizer_output:
+    type: uri_folder
+code: .
+command: >
   python tf_idf.py
-  --input_data ${{inputs.input_data}}
-  --output_data ${{outputs.output_data}}
-  --vectorizer_output ${{outputs.vectorizer}}
+  --train_data ${{inputs.train_data}}
+  --val_data ${{inputs.val_data}}
+  --test_data ${{inputs.test_data}}
+  --deploy_data ${{inputs.deploy_data}}
+  --train_out ${{outputs.train_out}}
+  --val_out ${{outputs.val_out}}
+  --test_out ${{outputs.test_out}}
+  --deploy_out ${{outputs.deploy_out}}
+  --vectorizer_output ${{outputs.vectorizer_output}}
   --text_column ${{inputs.text_column}}
   --max_features ${{inputs.max_features}}
   --ngram_range ${{inputs.ngram_range}}
-code: .
+environment: azureml:AzureML-sklearn-1.1-ubuntu20.04-py38-cpu@latest

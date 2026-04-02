@@ -11,10 +11,16 @@ def parse_args():
 def main():
     args = parse_args()
     
-    # Load the data
-    df = pd.read_parquet(args.input_data)
+    # Load the data - handle folder or direct path
+    if os.path.isdir(args.input_data):
+        input_path = os.path.join(args.input_data, "data.parquet")
+    else:
+        input_path = args.input_data
     
-    # Ensure the review text column exists (usually called 'reviewText' in Amazon data)
+    df = pd.read_parquet(input_path)
+    print(f"Input shape: {df.shape}")
+    
+    # Ensure the review text column exists
     text_col = 'reviewText' 
     
     if text_col in df.columns:
@@ -31,9 +37,11 @@ def main():
     else:
         print(f"Warning: Column {text_col} not found!")
 
+    print(f"Output shape: {df.shape}")
+    
     # Save the output
     os.makedirs(args.output_data, exist_ok=True)
-    df.to_parquet(os.path.join(args.output_data, "data.parquet"))
+    df.to_parquet(os.path.join(args.output_data, "data.parquet"), index=False)
 
 if __name__ == "__main__":
     main()

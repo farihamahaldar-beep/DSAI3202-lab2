@@ -21,36 +21,43 @@ def main():
     args = parse_args()
     
     # Load data from parquet
-    input_path = os.path.join(args.input_data, "data.parquet")
-    df = pd.read_parquet(input_path)
-    # Ensure text column exists
-    if args.text_column in df.columns:
-        # Fill empty reviews
-        df[args.text_column] = df[args.text_column].fillna('')
-        
-        # Initialize VADER sentiment analyzer
-        sia = SentimentIntensityAnalyzer()
-        
-        # Extract sentiment features
-        sentiment_scores = []
-        for text in df[args.text_column]:
-            scores = sia.polarity_scores(str(text))
-            sentiment_scores.append({
-                'sentiment_pos': scores['pos'],
-                'sentiment_neg': scores['neg'],
-                'sentiment_neu': scores['neu'],
-                'sentiment_compound': scores['compound']
-            })
-        
-        # Create dataframe from sentiment scores
-        sentiment_df = pd.DataFrame(sentiment_scores)
-        
-        # Add sentiment features to original dataframe
-        df = pd.concat([df, sentiment_df], axis=1)
-        
-        print("Successfully created sentiment features.")
+    if os.path.isdir(args.input_data):
+        input_path = os.path.join(args.input_data, "data.parquet")
     else:
-        print(f"Warning: Column {args.text_column} not found!")
+        input_path = args.input_data
+    
+    df = pd.read_parquet(input_path)
+    print(f"Input shape: {df.shape}")
+    
+    # Ensure text column exists
+    if args.text_column not in df.columns:
+        raise ValueError(f"Column {args.text_column} not found!")
+    
+    # Fill empty reviews
+    df[args.text_column] = df[args.text_column].fillna('')
+    
+    # Initialize VADER sentiment analyzer
+    sia = SentimentIntensityAnalyzer()
+    
+    # Extract sentiment features - KEEP SAME INDEX
+    sentiment_scores = []
+    for text in df[args.text_column]:
+        scores = sia.polarity_scores(str(text))
+        sentiment_scores.append({
+            'sentiment_pos': scores['pos'],
+            'sentiment_neg': scores['neg'],
+            'sentiment_neu': scores['neu'],
+            'sentiment_compound': scores['compound']
+        })
+    
+    # Create dataframe with SAME INDEX as original
+    sentiment_df = pd.DataFrame(sentiment_scores, index=df.index)
+    
+    # Add sentiment features to original dataframe by column, preserving index
+    df = pd.concat([df, sentiment_df], axis=1)
+    
+    print(f"Output shape: {df.shape}")
+    print("Successfully created sentiment features.")
     
     # Save the output
     os.makedirs(args.output_data, exist_ok=True)
