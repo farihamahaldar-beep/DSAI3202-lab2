@@ -61,21 +61,19 @@ def build_features(df):
     SAME logic must be applied to train, val, and test.
     """
     
-    # Check for required feature columns
+    # Use only strongest features: SBERT + TF-IDF + core sentiment + length
     sbert_cols = [col for col in df.columns if col.startswith('bert_embedding_')]
     tfidf_cols = [col for col in df.columns if col.startswith('tfidf_')]
-    sentiment_cols = ['sentiment_pos', 'sentiment_neg', 'sentiment_neu', 'sentiment_compound']
-    length_cols = ['review_length_words', 'review_length_chars']
+    sentiment_cols = ['sentiment_compound']  # ← Only compound, drop pos/neg/neu (correlated)
+    length_cols = ['review_length_words']    # ← Only words, drop chars (correlated)
     
-    if not sbert_cols:
-        raise RuntimeError("Missing SBERT embeddings (bert_embedding_* columns)")
-    if not tfidf_cols:
-        raise RuntimeError("Missing TF-IDF features (tfidf_* columns)")
+    # Don't use derived sentiment columns (title_sentiment, brand_sentiment, etc.)
+    # These are redundant - we already have sentiment on full reviewText
     
-    # Collect all feature columns
+    # Collect feature columns
     feature_cols = sbert_cols + tfidf_cols + sentiment_cols + length_cols
     
-    # Verify all sentiment and length columns exist
+    # Verify all exist
     missing_cols = [col for col in sentiment_cols + length_cols if col not in df.columns]
     if missing_cols:
         print(f"Warning: Missing columns {missing_cols}, proceeding with available features")
