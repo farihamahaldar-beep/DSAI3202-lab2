@@ -80,6 +80,19 @@ def main():
     )
     print(f"Shape after semantic embedding merge: {merged_df.shape}")
     
+    # ============ KEY FIX: REMOVE DUPLICATES ============
+    print(f"\n⚠️ Checking for duplicate (asin, reviewerID) pairs...")
+    n_before = len(merged_df)
+    n_unique = merged_df.groupby(entity_keys).ngroups
+    n_duplicates = n_before - n_unique
+    
+    if n_duplicates > 0:
+        print(f"Found {n_duplicates} duplicate rows ({100*n_duplicates/n_before:.1f}% of data)")
+        merged_df = merged_df.drop_duplicates(subset=entity_keys, keep='first')
+        print(f"Removed duplicates. New shape: {merged_df.shape}")
+    else:
+        print(f"✅ No duplicates found. Data is clean!")
+    
     # Create output directory
     os.makedirs(args.output_data, exist_ok=True)
     
@@ -88,7 +101,7 @@ def main():
     merged_df.to_parquet(output_path, index=False)
     
     print(f"\nMerge completed successfully!")
-    print(f"Merged dataset shape: {merged_df.shape}")
+    print(f"Final merged dataset shape: {merged_df.shape}")
     print(f"Total features: {len(merged_df.columns)}")
     print(f"Output saved to: {output_path}")
 
