@@ -11,6 +11,7 @@ variables:
   RESOURCE_GROUP: 'rg-60306249'
   WORKSPACE_NAME: 'Amazon-lab2-60306249'
 
+
 steps:
 - checkout: self
 
