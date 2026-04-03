@@ -46,6 +46,7 @@ search_space:
 objective:
   primary_metric: val_accuracy
   goal: maximize
+  
 
 limits:
   max_total_trials: 6
