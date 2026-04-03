@@ -7,7 +7,7 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  AZURE_SUBSCRIPTION: 'SC-UDST-CCIT-DSAI3202-3'  # ADD THE -3 (matches your subscription number)
+  AZURE_SUBSCRIPTION: 'SC-UDST-CCIT-DSAI3202'  
   RESOURCE_GROUP: 'rg-60306249'
   WORKSPACE_NAME: 'Amazon-lab2-60306249'
 
