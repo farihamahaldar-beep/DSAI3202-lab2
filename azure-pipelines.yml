@@ -6,6 +6,7 @@ trigger:
 pool:
   vmImage: 'ubuntu-latest'
 
+
 variables:
   azureSubscription: 'SC-UDST-CCIT-DSAI3202'
   resourceGroup: 'rg-60306249'
