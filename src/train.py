@@ -20,8 +20,8 @@ def parse_args():
     parser.add_argument("--val_data", type=str, required=True)
     parser.add_argument("--test_data", type=str, required=True)
     parser.add_argument("--output", type=str, required=True)
-    parser.add_argument("--c", type=float, default=1.0, help="Inverse regularization strength")
-    parser.add_argument("--max_iter", type=int, default=1000, help="Maximum iterations")
+    parser.add_argument("--c", type=float, default=0.02, help="Regularization strength")
+    parser.add_argument("--max_iter", type=int, default=2000, help="Maximum iterations")
     return parser.parse_args()
 
 # --------------------------------------------------
@@ -219,10 +219,10 @@ def main():
     # Train model
     print("\nTraining model...")
     model = LogisticRegression(
-        C=0.02,  # ← Stronger regularization
-        class_weight='balanced',  # ← Handle imbalance
+        C=args.c,
+        class_weight='balanced',
         max_iter=args.max_iter,
-        random_state=42,
+        random_state=123,
         verbose=0
     )
     model.fit(X_train_scaled, y_train)
