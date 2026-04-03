@@ -7,27 +7,23 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  azureSubscription: 'SC-UDST-CCIT-DSAI3202'
-  resourceGroup: 'rg-60306249'
-  workspace: 'Amazon-lab2-60306249'
+  AZURE_SUBSCRIPTION: 'SC-UDST-CCIT-DSAI3202-3'  # ADD THE -3 (matches your subscription number)
+  RESOURCE_GROUP: 'rg-60306249'
+  WORKSPACE_NAME: 'Amazon-lab2-60306249'
 
 steps:
-- task: UsePythonVersion@0
-  inputs:
-    versionSpec: '3.9'
-  displayName: 'Use Python 3.9'
-
-- script: |
-    pip install azure-cli
-    az extension add -n ml
-  displayName: 'Install Azure CLI'
+- checkout: self
 
 - task: AzureCLI@2
+  displayName: 'Submit Azure ML Training Job'
   inputs:
-    azureSubscription: $(azureSubscription)
-    scriptType: 'bash'
-    scriptLocation: 'inlineScript'
+    azureSubscription: $(AZURE_SUBSCRIPTION)
+    scriptType: bash
+    scriptLocation: inlineScript
     inlineScript: |
-      az configure --defaults group=$(resourceGroup) workspace=$(workspace)
-      az ml job create --file jobs/train_job.yml
-  displayName: 'Submit Training Job to Azure ML'
+      set -e
+      az extension add -n ml -y || az extension update -n ml
+      az configure --defaults group=$(RESOURCE_GROUP) workspace=$(WORKSPACE_NAME)
+      JOB_NAME=$(az ml job create --file jobs/train_job.yml --query name -o tsv)
+      echo "Job name: $JOB_NAME"
+      az ml job stream --name $JOB_NAME
