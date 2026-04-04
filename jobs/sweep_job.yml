@@ -16,19 +16,21 @@ trial:
   environment:
     image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04
     conda_file: ../env/conda.yml
-  inputs:
-    train_data:
-      type: uri_folder
-      default: azureml:amazon_review_merged_features_train@latest
-    val_data:
-      type: uri_folder
-      default: azureml:amazon_review_merged_features_val@latest
-    test_data:
-      type: uri_folder
-      default: azureml:amazon_review_merged_features_test@latest
-  outputs:
-    model_output:
-      type: uri_folder
+
+inputs:
+  train_data:
+    type: uri_folder
+    default: azureml:amazon_review_merged_features_train@latest
+  val_data:
+    type: uri_folder
+    default: azureml:amazon_review_merged_features_val@latest
+  test_data:
+    type: uri_folder
+    default: azureml:amazon_review_merged_features_test@latest
+
+outputs:
+  model_output:
+    type: uri_folder
 
 compute: azureml:lab4-cluster
 
@@ -46,7 +48,6 @@ search_space:
 objective:
   primary_metric: val_accuracy
   goal: maximize
-  
 
 limits:
   max_total_trials: 6
