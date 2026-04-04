@@ -42,8 +42,9 @@ search_space:
     min_value: 0.001
     max_value: 0.1
   max_iter:
-    type: choice
-    values: [1000, 2000, 3000]
+    type: uniform
+    min_value: 1000
+    max_value: 3000
 
 objective:
   primary_metric: val_accuracy
