@@ -174,7 +174,7 @@ def main():
         "feature_cols": feature_cols
     }, model_path)
 
-    mlflow.log_artifact(model_path)
+    print(f"Model saved to: {model_path}")
 
     runtime = time.time() - start_time
     mlflow.log_metric("training_runtime_seconds", runtime)
