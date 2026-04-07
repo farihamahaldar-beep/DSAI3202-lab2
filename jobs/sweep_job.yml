@@ -1,5 +1,6 @@
 $schema: https://azuremlschemas.azureedge.net/latest/sweepJob.schema.json
 type: sweep
+
 display_name: amazon_review_sweep
 experiment_name: amazon_review_training_experiment
 
@@ -7,30 +8,33 @@ trial:
   code: ../src
   command: >
     python train.py
-    --train_data ${{inputs.train_data}}/data.parquet
-    --val_data ${{inputs.val_data}}/data.parquet
-    --test_data ${{inputs.test_data}}/data.parquet
+    --train_data ${{inputs.train_data}}
+    --val_data ${{inputs.val_data}}
+    --test_data ${{inputs.test_data}}
     --output ${{outputs.model_output}}
     --c ${{search_space.c}}
     --max_iter ${{search_space.max_iter}}
+
   environment:
     image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04
     conda_file: ../env/conda.yml
 
 inputs:
   train_data:
-    type: uri_folder
-    default: azureml:amazon_review_merged_features_train@latest
+    path: azureml:amazon_review_merged_features_train@latest
+    mode: download
+
   val_data:
-    type: uri_folder
-    default: azureml:amazon_review_merged_features_val@latest
+    path: azureml:amazon_review_merged_features_val@latest
+    mode: download
+
   test_data:
-    type: uri_folder
-    default: azureml:amazon_review_merged_features_test@latest
+    path: azureml:amazon_review_merged_features_test@latest
+    mode: download
 
 outputs:
   model_output:
-    type: uri_folder
+    mode: upload
 
 compute: azureml:lab4-cluster
 
@@ -41,10 +45,10 @@ search_space:
     type: uniform
     min_value: 0.001
     max_value: 0.1
+
   max_iter:
-    type: uniform
-    min_value: 1000
-    max_value: 3000
+    type: choice
+    values: [1000, 1500, 2000, 2500, 3000]
 
 objective:
   primary_metric: val_accuracy
