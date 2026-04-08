@@ -1,305 +1,104 @@
-# Lab 4: Text Feature Engineering with Azure ML
-
-## Overview
-
-This lab implements a complete feature engineering pipeline using Azure Machine Learning to transform raw Amazon Electronics review text into machine learning-ready numerical features. The pipeline processes 300,000+ reviews and generates 528 engineered features across four key dimensions: review length, sentiment, word importance (TF-IDF), and semantic meaning (BERT embeddings). The goal was to transform raw text into high-signal numerical features, merge them into a unified dataset, and register them as a versioned Feature Set in the Azure Machine Learning Feature Store.
-
-## Dataset Exploration & Validation
-
-**Load & Inspect:** Verify dataset loads correctly, check row/column counts, schema, and data types to catch issues early.
-
-**Verify Data Quality:** Check for missing values and malformed reviews in key columns (reviewText, overall, asin).
-
-### Visualizations
-
-**Rating Distribution:** Heavily skewed toward 5-star (~17M reviews) vs 1-star (~2M), creating class imbalance requiring class weights in ML models.
-
-**Review Length Distribution:** Most reviews ~500 characters, but long tail extends to 30,000+. Length alone doesn't predict ratings, but combined with sentiment it's useful.
-
-(REFER [03_write_gold_features_v1.ipynb](03_write_gold_features_v1.ipynb))
-</details>
-
-<details>
-<summary><b>Review Length Distribution</b></summary>
-<img width="660" height="427" alt="image" src="https://github.com/user-attachments/assets/e9eb62eb-b08d-441e-bb04-e4f5a198de9c" />
-<img width="672" height="337" alt="image" src="https://github.com/user-attachments/assets/6bef034c-c262-4c65-8f75-e9eeb50ea6d3" />
-
-</details>
-
-### Drift-Resistant Sampling
-
-**Problem:** Random sampling from 20M reviews over-represents recent years, causing language drift when features fail on older data.
-
-**Solution:** Stratified sampling by year ensures equal representation across 1999-2014 timespan:
-```python
-df_with_year = df.withColumn("review_year", F.year(F.from_unixtime(df.reviewTime.cast('long'))))
-df_sampled = df_with_year.stat.sampleBy('review_year', fractions={...})
-```
-
-**Result:** 300K sample representative of full dataset with rating distributions matching original (~43% 5-star).
+# Assignment 2: Amazon Electronics Review Sentiment Analysis: MLOps Pipeline  
 
 ---
 
-## Feature Engineering Components
-
-Each component performs one specific task, runs on Azure ML compute, and outputs parquet files that feed into the pipeline.
-
-<details>
-<summary>Click to expand folder structure</summary>
-```
-📦 project-root
-│
-├── 📂 components
-│   ├── 📂 merge_component
-│   │   ├── component.yml
-│   │   └── merge.py
-│   ├── 📂 normalize_text
-│   │   ├── component.yml
-│   │   └── normalize.py
-│   ├── 📂 semantic_embedding
-│   │   ├── component.yml
-│   │   ├── conda.yml
-│   │   └── semantic.py
-│   ├── 📂 sentiment
-│   │   ├── component.yml
-│   │   ├── conda.yml
-│   │   └── sentiment.py
-│   ├── 📂 split_dataset
-│   │   ├── component.yml
-│   │   └── split.py
-│   ├── 📂 text_processing
-│   │   ├── component.yml
-│   │   └── review_length.py
-│   └── 📂 tf_idf
-│       ├── component.yml
-│       ├── conda.yml
-│       └── tf_idf.py
-│
-├── 📂 data
-│   └── features_v1_sampled.yml
-│
-├── 📂 datastores
-│   └── curated_adls.yml
-│
-├── 📂 feature_store
-│   ├── .amlignore
-│   ├── entity_amazon_review.yml
-│   ├── feature_set_def.yml
-│   └── FeatureSpec.yaml
-│
-├── 📂 pipelines
-│   ├── feature_pipeline.yml
-│
-├── 03_write_gold_features_v1.ipynb
-└── 📄 README.md
-```
-</details>
-
-### 1. Split Dataset Component
-
-**Purpose:** Prevent data leakage by splitting BEFORE feature fitting.
-
-**Code Explanation:** Two-stage split strategy: 70/30 split (train vs temp), then 50/50 of temp (validation vs test) = exactly 70% train, 15% validation, 15% test. Seed=42 ensures reproducible splits every run. Two stages needed because sklearn doesn't natively do 70/15/15.
-
-**Output:** train/ (210k rows), val/ (45k rows), test/ (45k rows)
-
-**Environment:** Standard sklearn (AzureML-sklearn-1.1-ubuntu20.04-py38-cpu@latest)
+## Project Overview
+This project implements a complete end-to-end MLOps workflow for sentiment classification on Amazon Electronics reviews. The goal was to transition from a static data engineering pipeline (Lab 4) into a production-ready system involving automated training, hyperparameter optimization, and CI/CD integration. The system is built using Azure Machine Learning, MLflow for experiment tracking, and Azure DevOps for automation.
 
 ---
 
-### 2. Normalize Text Component
+<a name="part-i"></a>
+## Part I: Data Engineering & Split Strategy
 
-**Purpose:** Consistent text preprocessing across all splits to prevent train/test distribution mismatch.
+### Revised 4-Way Split
+To simulate a real-world production lifecycle, I updated the splitting logic to include a fourth partition. This ensures the model is evaluated not just on historical data, but on a simulated "live" environment.
+* **Train (60%)**: Used for model learning and weight optimization.
+* **Validation (15%)**: Used for hyperparameter tuning.
+* **Test (15%)**: A true holdout set for offline performance evaluation.
+* **Deployment (10%)**: Sourced from the most recent reviews by year to test for model robustness against data drift.
 
-**Code Explanation:** Applies regex patterns to standardize: lowercase letters ("Great" = "great"), remove URLs/numbers (noise), strip punctuation, trim whitespace, filter reviews <10 chars. Identical preprocessing on train/val/test prevents models from seeing different patterns in different splits.
-
-**Applied to:** normalize_train, normalize_val, normalize_test (3 parallel instances)
-
-**Environment:** Standard sklearn
-
----
-
-### 3. Review Length Features
-
-**Purpose:** Capture review effort and engagement.
-
-**Created:** 
-- `review_length_words` (word count)
-- `review_length_chars` (character count)
-
-**Code Explanation:** Counts words by splitting on whitespace and counts total characters. Simple but interpretable—1-star reviews averaging 2000 chars vs 5-star averaging 400 chars is a strong signal. Longer reviews = more detailed complaints or recommendations.
-
-**Input:** Normalized training data | **Output:** review_length features appended
-
-**Environment:** Standard sklearn
+### Feature Pipeline
+The pipeline generates a high-dimensional feature matrix (495 features total):
+* **SBERT Embeddings (384 dims)**: Captures semantic context using `all-MiniLM-L6-v2`.
+* **TF-IDF (100 dims)**: Identifies word-frequency importance (unigrams/bigrams).
+* **Sentiment Metrics**: VADER compound scores representing emotional tone.
+* **Structural Features**: Review word counts to capture customer effort.
 
 ---
 
-### 4. Sentiment Features (VADER)
+<a name="part-ii"></a>
+## Part II: Model Development & Feature Construction
 
-**Purpose:** Extract emotional tone and opinion polarity from review text.
+### Algorithm Selection
+I chose **Logistic Regression** as the primary classifier. It is computationally efficient, handles high-dimensional sparse data (TF-IDF) effectively, and provides interpretable feature weights—making it a stable choice for deployment.
 
-**Created:** 
-- `sentiment_pos` (positive word proportion, 0-1)
-- `sentiment_neg` (negative word proportion, 0-1)
-- `sentiment_neu` (neutral word proportion, 0-1)
-- `sentiment_compound` (normalized combined score, -1 to +1)
-
-**Code Explanation:** VADER calculates four sentiment proportions for each review. Pre-trained on social media (tweets, reviews); handles contractions ("don't" → negative), emoji, capitalization emphasis ("GREAT" > "great"), punctuation ("Great!!!" > "Great")—exactly what Amazon reviews contain.
-
-**Dependencies:** nltk>=3.6.0, pandas>=1.3.0, pyarrow>=10.0.0
-
-## Important Note: Code Fix Without Re-run
-
-**Sentiment Component Bug Fix (Committed but Not Re-run):**
-
-A critical bug was identified in `components/sentiment/sentiment.py` during Assignment 2 development: the sentiment component was outputting the entire input dataframe instead of just sentiment features + entity keys, causing 47% duplicate rows in the merged dataset.
-
-The fix has been committed to this branch and is visible in git history, demonstrating good debugging practices through identifying the root cause, implementing the solution, and documenting it. To conserve compute resources, the pipeline was not re-run since the bug fix is already documented in code. The fix's effectiveness is proven through Assignment 2 results (81.68% test accuracy vs 65% before the fix), validating that the corrected sentiment component enables improved downstream model performance.
-
-**Critical:** Must include `pyarrow>=10.0.0` for parquet I/O support.
-
-**Environment:** Custom conda (nltk, pandas, pyarrow)
+### Label Engineering
+A major performance boost came from tuning the "Positive" label threshold. The `overall` rating was normalized to a 0–1 scale:
+* **Initial 0.8 Threshold**: (5-stars only) Produced 70.89% accuracy due to limited positive samples.
+* **Final 0.6 Threshold**: (4–5 stars) Achieved **81.68% accuracy** with better class balance.
 
 ---
 
-### 5. TF-IDF Features
+<a name="part-iii"></a>
+## Part III: Azure ML Pipeline Architecture
 
-**Purpose:** Capture word frequency and importance using statistical weighting.
+### MLflow Integration
+Every training run is tracked via MLflow within the Azure ML workspace. This logs:
+* **Hyperparameters**: C-value, max iterations, and class weights.
+* **Metrics**: Accuracy, AUC, Precision, Recall, and F1-score for all four splits.
+* **Artifacts**: The serialized `model.pkl` and the `StandardScaler` (fitted strictly on training data to prevent leakage).
 
-**Config:** 
-- max_features=100 (top 100 most important words)
-- ngram_range=(1,2) (unigrams + bigrams)
-- stop_words='english' (remove common filler)
-
-**Created:** ~100 features named `tfidf_<word>` (e.g., `tfidf_great`, `tfidf_poor`)
-
-**Code Explanation:** Vectorizer fit ONLY on training data (critical to prevent data leakage); same vocabulary applied to val/test without learning from them. Bigrams capture negations ("not good" ≠ "good"). Removes stop words ("the", "is") as noise. Top 100 words reduce dimensionality from 10,000+ possible terms.
-
-**Data Leakage Prevention:** Fit vectorizer on train_data only; transform val/test without fitting.
-
-**Dependencies:** scikit-learn>=0.24.0, pandas>=1.3.0, numpy>=1.20.0, pyarrow>=10.0.0
-
-**Critical:** Must include `pyarrow>=10.0.0` for parquet output.
-
-**Environment:** Custom conda (scikit-learn, pandas, numpy, pyarrow)
+### Hyperparameter Sweep
+A sweep job (`sweep_job.yml`) was conducted to optimize the model:
+* **Sampling**: Random sampling of the `C` parameter.
+* **Insight**: The sweep confirmed that a middle-ground regularization ($C=0.02$) provided the best generalization, preventing the overfitting seen in earlier trials.
 
 ---
 
-### 6. Semantic Embedding Features (BERT)
+<a name="part-iv"></a>
+## Part IV: CI/CD Automation with Azure DevOps
 
-**Purpose:** Capture contextual meaning and semantic relationships using transformer models.
-
-**Model:** all-MiniLM-L6-v2 (DistilBERT)
-- 66% faster than full BERT
-- 40% smaller than full BERT
-- 95% of BERT performance
-
-**Created:** 384 features `bert_embedding_0` through `bert_embedding_383`
-
-**Code Explanation:** DistilBERT pre-trained on 1 billion+ sentences converts each review into 384-dimensional semantic vector. Synonyms like "great" and "excellent" have similar values. Understands context ("bank" in "river bank" ≠ "bank account"). Why embeddings when we have TF-IDF? Because embeddings understand meaning; TF-IDF only sees word frequencies. 384 dimensions balance capturing nuance against computation cost.
-
-**Dependencies:** torch>=2.0.0, transformers>=4.35.0, sentence-transformers>=2.2.2, pandas>=1.5.0, numpy>=1.21.0, pyarrow>=10.0.0
-
-**Critical:** Must include torch, transformers, sentence-transformers, and pyarrow.
-
-**Performance:** Slowest component (~2-3 minutes on cluster). Uses batch processing (batch_size=32) to optimize inference speed.
-
-**Environment:** Custom conda (torch, transformers, sentence-transformers, pyarrow)
+The training workflow is fully automated through `azure-pipelines.yml`:
+* **Trigger**: Every push to the `Assignment-2` branch.
+* **Service Connection**: `SC-UDST-CCIT-DSAI3202`.
+* **Automation Logic**: The pipeline installs the ML CLI, configures workspace defaults, and submits the training job. I explicitly passed resource group and workspace flags to ensure the CLI extension functioned reliably within the DevOps environment.
 
 ---
 
-### 7. Merge Features Component
+<a name="part-v"></a>
+## Part V: Results & Experimental Observations
 
-**Purpose:** Consolidate all engineered features into single dataset for Feature Store registration.
+### Final Performance Metrics
+| Split | Accuracy | AUC | Precision | Recall | F1-Score |
+|-------|----------|-----|-----------|--------|----------|
+| Train | 87.61% | 95.04% | 97.19% | 87.23% | 91.94% |
+| **Test** | **81.68%** | **81.38%** | **92.24%** | **85.25%** | **88.60%** |
 
-**Code Explanation:** Inner joins all 4 feature outputs on entity keys (asin = product ID, reviewerID = reviewer ID), keeping only rows with complete feature vectors (no missing values). Ensures every row has all features for ML models.
-
-**Data Volume:**
-- Input: 300k sampled reviews
-- After split: 300k total (210k train + 45k val + 45k test)
-- Output: 403,409 rows × 528 columns (11 original + 517 engineered)
-
-**Environment:** Standard sklearn
-
----
-
-## Pipeline & Feature Store Registration
-
-### Creating and Running the Pipeline
-
-The pipeline connects all components together. It reads the sampled data, splits it, normalizes it, extracts features in parallel, and merges everything into one dataset.
-
-**Submit the pipeline:**
-```bash
-az ml job create --file pipelines/feature_pipeline.yml
-```
-
-**Monitor:** Go to Azure ML Studio → Jobs → Click your pipeline job → View individual component runs and logs.
-
-**Runtime:** ~5-6 minutes total (BERT embeddings are slowest at 2-3 minutes).
+### Feature Configuration Tests
+| Run | Feature Set | Observation |
+|-----|-------------|-------------|
+| 1 | SBERT Only | High semantic understanding but missed specific keyword triggers. |
+| 2 | SBERT + TF-IDF | Significant boost in discriminative power for technical terms. |
+| 3 | **All Features** | Best overall performance by combining sentiment tone and review effort. |
 
 ---
 
-### Registering Features in Feature Store
+<a name="part-vi"></a>
+## Part VI: Challenges & Technical Lessons
 
-After the pipeline completes successfully:
+### The "Sentiment Component" Bug
+The most significant challenge was a data-integrity issue in the merge phase. The sentiment component was outputting its entire input dataframe, causing a "row explosion" (210k to 403k rows).
+* **Impact**: The model showed 99% training accuracy because it was memorizing duplicates, but only 65% on the test set.
+* **Solution**: I refactored the component to output only entity keys and unique features, which restored model generalization.
 
-**Get the URI:** Go to Azure ML Studio → Jobs → Click completed pipeline → Click `merge_all` step → "Outputs + logs" → Copy the URI from `output_data`
-
-**Create FeatureSetSpec.yaml**
-
-**Purpose:** Defines the schema of your features (column names, data types, source location, timestamp).
-
-**Code Explanation:**
-- `source.path`: Full URI to your merged parquet file from merge_all output
-- `source.timestamp_column`: `reviewTime` tracks when each review was written (enables time-based feature queries)
-- `index_columns`: Entity keys (`asin`, `reviewerID`) that uniquely identify each review
-- `features`: Lists all 528 columns with their data types (string, double, integer)
-
-**Why it matters:** Feature Store uses this schema to validate and organize your features. The index columns tell Feature Store how to join features with other datasets in future modeling tasks.
+### Data Standardization
+I ensured the `StandardScaler` was fit only on the training split. Applying the same scaler to the validation and test sets is critical in MLOps to prevent data leakage and ensure inference consistency.
 
 ---
 
-**Create feature_set_def.yml**
+<a name="bonus"></a>
+## Bonus: Evaluation Methodology
 
-**Purpose:** Links your feature specification to the entity, enabling Feature Store to track feature lineage and versioning.
+**Question: What is one thing we are doing “not correctly” in this assignment?**
 
-**Code Explanation:**
-- `name`: Unique name for your feature set (e.g., `feature_set_def`)
-- `version`: Version number ("1" for first release; increment when features change)
-- `entities`: References the AmazonReview entity (`azureml:AmazonReview:1`)
-- `specification.path`: Points to FeatureSetSpec.yaml (use `.` if in same folder)
-- `description`: Documents what features are included and why
-
-**Why it matters:** Feature Store uses this definition to organize features by entity. Multiple feature sets can exist for the same entity (e.g., v1 with 528 features, v2 with 600 features) without conflicts.
-
----
-
-### Pipeline Execution & Results
-
-### Pipeline Completion
-<img width="1097" height="90" alt="image" src="https://github.com/user-attachments/assets/f8cc2a50-2b5a-45cc-88ae-9a446b645768" />
-
-<img width="959" height="459" alt="image" src="https://github.com/user-attachments/assets/9b4e9ab1-cb3f-403b-ad27-2f18bd857ccd" />
-
-The pipeline completed successfully in ~5mins
-
-### Merge All Output
-<img width="1120" height="444" alt="image" src="https://github.com/user-attachments/assets/3c34ef27-2688-4ceb-9659-03a017223ecb" />
-Final output: 403,409 rows × 528 columns containing all engineered features ready for Feature Store registration.
-
-### Feature Store Registration
-<img width="1365" height="489" alt="image" src="https://github.com/user-attachments/assets/4e4da85e-4efc-4aee-8a36-4240050beb47" />
-<img width="1089" height="542" alt="image" src="https://github.com/user-attachments/assets/f8e305e0-c41e-4053-b056-ad53ed7c8dfd" />
-All 528 features registered as version 1 in the AmazonReview entity, ready for downstream modeling tasks.
-
-## Summary
-528 engineered features are now registered, versioned, and ready for reuse in future modeling tasks. The Feature Store enables consistent feature delivery across training, validation, and production environments.
-
-## Reflection
-
-Through this lab, I learned that systematic feature engineering is crucial to building effective ML pipelines. Using multiple feature types (length, sentiment, TF-IDF, embeddings) provided different perspectives on the data, which felt more robust than a single approach.
-I realized the importance of preventing data leakage—ensuring the TF-IDF vectorizer only learns from training data made me think differently about how pipelines should be structured. The drift-resistant sampling also showed me that temporal considerations matter in real-world datasets.
-
-Overall, this lab showed me that feature engineering isn't just about throwing features at a problem rather about understanding your data, preventing mistakes like data leakage, and choosing the right techniques for the job. Building a 528-feature dataset with proper documentation and versioning in the Feature Store feels like something that could actually be used in a real project, which is pretty cool.
+In this assignment, we are evaluating the **Test Set** and logging its metrics during every single training trial of the hyperparameter sweep. This violates the **Holdout Principle**. By observing the test set performance for every configuration, we risk selecting a model that "fits" the test set rather than one that generalizes well. The correct approach would be to hide the test set entirely until the best model has been finalized based solely on validation metrics.
