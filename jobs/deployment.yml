@@ -1,7 +1,7 @@
 $schema: https://azuremlschemas.azureedge.net/latest/managedOnlineDeployment.schema.json
 
 name: amazon-review-deployment
-endpoint_name: amazon-review-endpoint
+endpoint_name: amazon-review-endpoint-60306249
 
 model: azureml:amazon-review-sentiment-model@latest
 

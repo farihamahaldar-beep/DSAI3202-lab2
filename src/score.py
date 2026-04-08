@@ -16,7 +16,7 @@ feature_cols = None
 def init():
     global model, scaler, feature_cols
 
-    model_path = os.path.join(os.getenv("AZUREML_MODEL_DIR"), "model.pkl")
+    model_path = os.path.join(os.getenv("AZUREML_MODEL_DIR"), "model_output", "model.pkl")
 
     artifacts = joblib.load(model_path)
 
