@@ -135,9 +135,9 @@ def main():
         raise RuntimeError("Only one class in training data!")
 
     print("\n===== FEATURES =====")
-    X_train, feature_cols = build_features(train_df, mode="sbert")
-    X_val, _ = build_features(val_df, mode="sbert")
-    X_test, _ = build_features(test_df, mode="sbert")
+    X_train, feature_cols = build_features(train_df, mode="sbert_tfidf")
+    X_val, _ = build_features(val_df, mode="sbert_tfidf")
+    X_test, _ = build_features(test_df, mode="sbert_tfidf")
 
     y_train = train_df["label"]
     y_val = val_df["label"]
