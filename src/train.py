@@ -63,24 +63,29 @@ def create_labels(df):
 # --------------------------------------------------
 # Features
 # --------------------------------------------------
-def build_features(df):
+def build_features(df, mode="all"):
     sbert_cols = [c for c in df.columns if c.startswith('bert_embedding_')]
     tfidf_cols = [c for c in df.columns if c.startswith('tfidf_')]
-
     sentiment_cols = ['sentiment_compound']
     length_cols = ['review_length_words']
 
-    feature_cols = sbert_cols + tfidf_cols + sentiment_cols + length_cols
+    if mode == "sbert":
+        feature_cols = sbert_cols
 
-    # Remove missing columns safely
+    elif mode == "sbert_tfidf":
+        feature_cols = sbert_cols + tfidf_cols
+
+    elif mode == "all":
+        feature_cols = sbert_cols + tfidf_cols + sentiment_cols + length_cols
+
+    else:
+        raise ValueError("Invalid mode")
+
     feature_cols = [c for c in feature_cols if c in df.columns]
-
-    if len(feature_cols) == 0:
-        raise RuntimeError("No valid features found.")
 
     X = df[feature_cols].fillna(0)
 
-    print(f"Feature matrix shape: {X.shape}")
+    print(f"[{mode}] Feature matrix shape: {X.shape}")
 
     return X, feature_cols
 
@@ -130,9 +135,9 @@ def main():
         raise RuntimeError("Only one class in training data!")
 
     print("\n===== FEATURES =====")
-    X_train, feature_cols = build_features(train_df)
-    X_val, _ = build_features(val_df)
-    X_test, _ = build_features(test_df)
+    X_train, feature_cols = build_features(train_df, mode="sbert")
+    X_val, _ = build_features(val_df, mode="sbert")
+    X_test, _ = build_features(test_df, mode="sbert")
 
     y_train = train_df["label"]
     y_val = val_df["label"]
