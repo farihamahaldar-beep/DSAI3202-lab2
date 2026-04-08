@@ -21,8 +21,8 @@ def parse_args():
     parser.add_argument("--val_data", type=str, required=True)
     parser.add_argument("--test_data", type=str, required=True)
     parser.add_argument("--output", type=str, required=True)
-    parser.add_argument("--c", type=float, default=0.02)
-    parser.add_argument("--max_iter", type=int, default=2000)
+    parser.add_argument("--c", type=float, default=0.0162982115177557)
+    parser.add_argument("--max_iter", type=int, default=1500)
     return parser.parse_args()
 
 
