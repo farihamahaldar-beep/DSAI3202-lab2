@@ -8,7 +8,8 @@
 3. Created an SSHA Key and 
 4. Used a tool called azcopy to push the fixed file (meta_Electronics_fixed.json) into my cloud storage using terminal
 <img width="975" height="299" alt="image" src="https://github.com/user-attachments/assets/5a815dd4-e260-451e-8874-b8d0ad9ab35a" />
-<img width="975" height="459" alt="image" src="https://github.com/user-attachments/assets/2354e922-f7f2-4235-a51c-de7e9b12fd8b" />
+
+<img width="975" height="459" alt="image" src="https://github.com/user-attachments/assets/3c9a59fd-7e98-4dc9-89ef-4f9b627db59e" />
 <img width="975" height="303" alt="image" src="https://github.com/user-attachments/assets/3b28cb87-ab58-46c5-974a-75605067c563" />
 <img width="975" height="530" alt="image" src="https://github.com/user-attachments/assets/b333e762-5091-4604-bbc2-7550f4a318ce" />
 
