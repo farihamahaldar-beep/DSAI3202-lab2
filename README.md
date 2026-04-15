@@ -1,4 +1,23 @@
-Overview: This lab implements a data preprocessing pipeline using Azure Databricks to process Amazon Electronics review data through a medallion architecture (Bronze → Silver → Gold layers).
+# Lab 3 - Data Preprocessing on Azure
+
+## Overview
+This lab implements a data preprocessing pipeline using Azure Databricks to process Amazon Electronics review data through a medallion architecture (Bronze → Silver → Gold layers).
+
+This pipeline follows the Medallion (Lakehouse) architecture:
+- Bronze layer: raw JSON data as originally ingested
+- Silver layer: cleaned and validated data
+- Gold layer: curated dataset ready for analytics and machine learning
+
+This layered approach improves data quality step-by-step and ensures that only reliable data reaches the final stage.
+
+## Technologies Used
+
+- Azure Databricks – used to run and manage the data processing pipeline
+- Apache Spark (PySpark) – used for large-scale data transformation
+- Azure Data Lake Storage Gen2 – stores data across Bronze, Silver, and Gold layers
+- Parquet format – efficient column-based storage for faster querying
+- Databricks Jobs – used to automate and schedule the pipeline
+- Python (PySpark) – used to implement ETL logic
 
 In this lab, I built a data pipeline in Azure Databricks to clean and organize Amazon review data:
 
@@ -17,7 +36,7 @@ In this lab, I built a data pipeline in Azure Databricks to clean and organize A
 
 3. Scheduled the job to run automatically:
    - Set it up to run daily so the data stays updated
-   - This means the pipeline can run on its own without me clicking anything
+   - This means the pipeline can run on its own without me clicking anything. This is important in real-world systems where data is continuously generated, as it ensures the dataset stays updated without manual intervention.
 
    <img width="966" height="548" alt="Screenshot 2026-02-10 225629" src="https://github.com/user-attachments/assets/00797c2a-f882-4566-b162-c6d4f50d9f08" />
 
@@ -37,10 +56,14 @@ Pipeline consists of three sequential notebooks: 01_load_and_clean_reviews, 02_e
    - Notebook 1: We clean the data by removing bad reviews (missing info, invalid ratings, reviews that are too short)
    - Notebook 2: We add more information by joining the reviews with product details like brand, title, and price
    - Basically we're fixing and improving the data to make it useful
+  
+This step is important because cleaning early prevents errors from propagating through the pipeline, and enrichment adds useful context that improves downstream analysis and machine learning performance.
    
    Load (Notebook 3):
    - We save the final clean and enriched data to the curated container
    - This is our finished product that's ready to use for analysis or machine learning
+
+     The data is stored in Parquet format, which is more efficient than raw formats like JSON because it reduces storage size and improves query performance.
    
    So it's: grabing the data → clean it up and add stuff → save the final version
 
@@ -62,6 +85,7 @@ Pipeline consists of three sequential notebooks: 01_load_and_clean_reviews, 02_e
          - Almost 60% of all reviews are 5-star ratings.
          - The data shows a strong bias toward extreme ratings - many 5-stars (positive) and relatively fewer middle ratings.
          - Only 6.5% of reviews are 1-star indicating most customers are satisfied.
+         - This imbalance in ratings could introduce bias in machine learning models, as the model may become more biased toward predicting positive outcomes.
            This indicates that amazon products generally satisfy customers. The low percentage of 1-2 star reviews (10.4% combined) suggests decent product quality overall.
 
       3. Review Length vs Rating
@@ -70,7 +94,12 @@ Pipeline consists of three sequential notebooks: 01_load_and_clean_reviews, 02_e
          - The middle line in each box is around the same height i.e., all ratings have similar median lengths.
          - The 1-star box appears slightly taller, suggesting unhappy customers write reviews of varying lengths.
          - Happy customers review range from brief "Great product!" to detailed explanations.
-           This indicates People who feel strongly (1-star or 5-star) sometimes write very long, detailed reviews. Those extremely long reviews (the dots way up high) are people who really wanted to share                 their experience in detail.
+         - This suggests that users with stronger opinions are more likely to provide detailed feedback, which can be useful for sentiment analysis tasks.
+           This indicates People who feel strongly (1-star or 5-star) sometimes write very long, detailed reviews. Those extremely long reviews (the dots way up high) are people who really wanted to share their experience in detail.
+
+           Final Reflection
+
+This lab helped me understand how raw data is transformed into a structured and reliable dataset using cloud-based tools. It also showed how data pipelines can be automated using Databricks Jobs, making them suitable for real-world applications where data is continuously updated.
 
 
    
